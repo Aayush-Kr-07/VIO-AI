@@ -1,0 +1,203 @@
+"use client";
+import React, { useContext, useState } from "react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { AuthContext } from "@/context/Authcontext";
+
+const RegisterPage = () => {
+  const authContext = useContext(AuthContext);
+  
+  if (!authContext) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
+
+  const { register, isLoading } = authContext;
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+  });
+  const [error, setError] = useState("");
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+
+    if (!formData.username || !formData.email || !formData.password) {
+      setError("Please fill in all fields");
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      setError("Password must be at least 6 characters");
+      return;
+    }
+
+    try {
+      await register(formData.username, formData.email, formData.password);
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Failed to register. Please try again.");
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-blue-100 to-cyan-100 px-4">
+      <div className="w-full max-w-md">
+        {/* Logo/Header */}
+        <div className="text-center mb-8"><br></br>
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-violet-600 to-violet-700 mb-4">
+            <span className="text-white font-bold text-lg">AI</span>
+          </div>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Create Account</h1>
+          <p className="text-gray-600">Join MockInterview and start practicing</p>
+        </div>
+
+        {/* Register Card */}
+        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Error Message */}
+            {error && (
+              <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-red-700 text-sm font-medium">{error}</p>
+              </div>
+            )}
+
+            {/* Username Field */}
+            <div className="space-y-2">
+              <label htmlFor="username" className="block text-sm font-medium text-gray-900">
+                Username
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-gray-400">👤</div>
+                <Input
+                  id="username"
+                  type="text"
+                  name="username"
+                  placeholder="johndoe"
+                  value={formData.username}
+                  onChange={handleChange}
+                  className="pl-10 h-11"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Email Field */}
+            <div className="space-y-2">
+              <label htmlFor="email" className="block text-sm font-medium text-gray-900">
+                Email Address
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-gray-400">📧</div>
+                <Input
+                  id="email"
+                  type="email"
+                  name="email"
+                  placeholder="you@example.com"
+                  value={formData.email}
+                  onChange={handleChange}
+                  className="pl-10 h-11"
+                  disabled={isLoading}
+                />
+              </div>
+            </div>
+
+            {/* Password Field */}
+            <div className="space-y-2">
+              <label htmlFor="password" className="block text-sm font-medium text-gray-900">
+                Password
+              </label>
+              <div className="relative">
+                <div className="absolute left-3 top-3 text-gray-400">🔒</div>
+                <Input
+                  id="password"
+                  type="password"
+                  name="password"
+                  placeholder="••••••••"
+                  value={formData.password}
+                  onChange={handleChange}
+                  className="pl-10 h-11"
+                  disabled={isLoading}
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
+            </div>
+
+            {/* Submit Button */}
+            <Button
+              type="submit"
+              disabled={isLoading}
+              className="w-full h-11 mt-6 bg-gradient-to-r from-violet-600 to-violet-700 hover:from-violet-700 hover:to-violet-800 text-white font-semibold rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isLoading ? (
+                <span className="flex items-center justify-center">
+                  <span className="mr-2">⏳</span>
+                  Creating account...
+                </span>
+              ) : (
+                "Sign Up"
+              )}
+            </Button>
+
+            {/* Terms Agreement */}
+            <div className="flex items-start mt-4">
+              <input
+                type="checkbox"
+                id="agree"
+                className="w-4 h-4 mt-0.5 rounded border-blue-300 text-blue-600 cursor-pointer"
+              />
+              <label htmlFor="agree" className="ml-2 text-xs text-gray-700 cursor-pointer">
+                I agree to the{" "}
+                <Link href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Terms of Service
+                </Link>{" "}
+                and{" "}
+                <Link href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+                  Privacy Policy
+                </Link>
+              </label>
+            </div>
+          </form>
+
+          {/* Divider */}
+          <div className="my-6 flex items-center">
+            <div className="flex-1 bg-gray-200 h-px"></div>
+            <span className="px-3 text-gray-500 text-sm">or</span>
+            <div className="flex-1 bg-gray-200 h-px"></div>
+          </div>
+
+          {/* Sign In Link */}
+          <p className="text-center text-gray-600">
+            Already have an account?{" "}
+            <Link
+              href="/login"
+              className="text-blue-600 hover:text-blue-700 font-semibold transition-colors"
+            >
+              Sign in
+            </Link>
+          </p>
+        </div>
+
+        {/* Footer Text */}
+        <p className="text-center text-gray-600 text-xs mt-6">
+          By signing up, you agree to our{" "}
+          <Link href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+            Terms of Service
+          </Link>{" "}
+          and{" "}
+          <Link href="#" className="text-blue-600 hover:text-blue-700 font-medium">
+            Privacy Policy
+          </Link>
+        </p>
+      </div>
+    </div>
+  );
+};
+
+export default RegisterPage;
