@@ -1,5 +1,5 @@
 const express = require("express");
-const { protect } = require("../middleware/auth");
+const { protect } = require("../middleware/auth.js");
 const {
   startInterview,
   submitAnswer,
@@ -7,7 +7,7 @@ const {
   getInterview,
   finishInterview,
   deleteInterview,
-} = require("../controllers/interviewcontroller");
+} = require("../controllers/interviewcontroller.js");
 const router = express.Router();
 
 router.use(protect);

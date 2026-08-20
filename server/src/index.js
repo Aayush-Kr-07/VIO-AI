@@ -1,9 +1,9 @@
 const express = require("express");
 const cors = require("cors");
-const connectDB = require("./config/db");
+const connectDB = require("./config/db.js");
 require("dotenv").config();
-const authRoutes = require("./routes/auth");
-const interviewsRoutes = require("./routes/interview");
+const authRoutes = require("./routes/auth.js");
+const interviewsRoutes = require("./routes/interview.js");
 const resumeRoutes = require("./routes/resume");
 const startServer = async () => {
   const dbConnected = await connectDB();
