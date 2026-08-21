@@ -9,6 +9,7 @@ const MessageSchema = new mongoose.Schema({
 const interviewSchema = new mongoose.Schema({
     userId: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
     domain: {type: String,required: true},
+    difficulty: {type: String, enum: ['Easy', 'Medium', 'Hard'], default: 'Easy'},
     score: {type: Number, default:0},
     duration: {type: Number, default:0}, //in minutes
     questionsAnswered: {type: Number, default:0},

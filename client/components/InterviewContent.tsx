@@ -75,7 +75,7 @@ const InterviewContent = () => {
         setMessages([
           {
             id: "1",
-            content: data.question || "Tell me about yourself",
+            content: data.question,
             isUser: false,
             timestamp: new Date(),
           },

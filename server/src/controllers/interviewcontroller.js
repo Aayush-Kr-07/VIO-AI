@@ -5,31 +5,32 @@ const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
 });
 const model = process.env.GROQ_MODEL || "openai/gpt-oss-20b";
+const difficultyLevels = ["Easy", "Medium", "Hard"];
 
-const systemPrompt = (domain) =>
-  `
-You are a senior technical interviewer conducting a mock interview for a ${domain} developer role.
-Ask exactly one clear, specific technical question at a time.
-When the candidate sends an answer, immediately ask the next question.
-Never provide feedback, scoring, explanations, greetings, or commentary during the interview.
-Return ONLY the question text.
-`.trim();
+const getPerformanceLevel = (score) => {
+  if (score >= 80) return "Strong";
+  if (score >= 50) return "Average";
+  return "Weak";
+};
+
+const getNextDifficulty = (difficulty, performanceLevel) => {
+  const currentIndex = Math.max(0, difficultyLevels.indexOf(difficulty));
+  const change =
+    performanceLevel === "Strong" ? 1 : performanceLevel === "Weak" ? -1 : 0;
+  const nextIndex = Math.max(
+    0,
+    Math.min(difficultyLevels.length - 1, currentIndex + change),
+  );
+  return difficultyLevels[nextIndex];
+};
+
+const isSkippedAnswer = (answer) =>
+  /^(skip|pass|next|i\s+(don'?t|do\s+not|cant|can\s*not)\s+know|no\s+idea|not\s+sure|move\s+on)([\s.!?]|$)/i.test(
+    answer.trim(),
+  );
 
 const normalizeQuestion = (question) =>
   question.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim();
-
-const fallbackQuestions = (domain) => [
-  `How would you design a reliable ${domain} solution for a sudden increase in traffic?`,
-  `What debugging process would you use when a ${domain} feature works locally but fails in production?`,
-  `How would you test a complex ${domain} component or service before releasing it?`,
-  `What are the most important security risks to consider in a ${domain} application?`,
-  `How would you improve the performance of a slow ${domain} application?`,
-  `How would you structure error handling in a production ${domain} system?`,
-  `What trade-offs would you evaluate when choosing between two ${domain} architectures?`,
-  `How would you monitor and troubleshoot a ${domain} system after deployment?`,
-  `How would you make a ${domain} codebase easier for a team to maintain?`,
-  `Describe how you would safely introduce a breaking change in a ${domain} project?`,
-];
 
 const isDuplicateQuestion = (candidate, previousQuestions) => {
   const normalizedCandidate = normalizeQuestion(candidate);
@@ -43,27 +44,81 @@ const isDuplicateQuestion = (candidate, previousQuestions) => {
   });
 };
 
+const isCodingQuestion = (question) =>
+  /\b(?:write|implement|create|build|develop|code|program|script)\b.{0,40}\b(?:function|class|program|script|code|solution|algorithm)\b|\b(?:provide|show|give)\s+(?:the\s+)?code\b|\bsolve\s+(?:this|the)\s+(?:coding|programming)\b/i.test(
+    question,
+  );
+
+const generateQuestion = async ({ domain, difficulty, previousQuestions, answer }) => {
+  let lastError;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      const questionResponse = await groq.chat.completions.create({
+        model,
+        messages: [
+          {
+            role: "system",
+            content: `You are a senior ${domain} technical interviewer.
+Generate exactly one original interview question for the selected domain.
+The question must be ${difficulty} difficulty, specific, professional, and answerable in natural language.
+Ask only conceptual, definition, comparison, explanation, or real-world scenario questions.
+Do not ask the candidate to write, implement, create, build, or provide any program, code, script, function, class, algorithm, or solution.
+Do not ask for code snippets, coding exercises, or output from code.
+Never repeat or paraphrase a previous question.
+Return ONLY the question text, with no numbering, preamble, feedback, or commentary.`,
+          },
+          {
+            role: "user",
+            content: `Previous questions:
+${previousQuestions.join("\n- ") || "None"}
+
+${answer ? `The candidate's previous answer was: "${answer.substring(0, 500)}"` : "This is the first question."}
+
+Generate a new ${difficulty} difficulty ${domain} interview question now.`,
+          },
+        ],
+        temperature: 0.9,
+          max_tokens: 300,
+          reasoning_effort: "low",
+      });
+        const question = questionResponse.choices?.[0]?.message?.content
+          ?.replace(/^\s*(?:\*\*Question:\*\*|Question:)\s*/i, "")
+          .trim();
+
+      if (
+        question &&
+        !isCodingQuestion(question) &&
+        !isDuplicateQuestion(question, previousQuestions)
+      ) {
+        return question;
+      }
+
+      lastError = new Error(
+        "AI generated an empty, duplicate, or coding-task question",
+      );
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  const error = new Error("AI could not generate a unique interview question");
+  error.cause = lastError;
+  error.statusCode = 503;
+  throw error;
+};
+
 // ── Start Interview ───────────────────────────────────────
 const startInterview = async (req, res) => {
   try {
     const { domain } = req.body;
     if (!domain) return res.status(400).json({ message: "Domain is required" });
 
-    const completion = await groq.chat.completions.create({
-      model,
-      messages: [
-        { role: "system", content: systemPrompt(domain) },
-        {
-          role: "user",
-          content: `Start the interview. Ask me the first ${domain} technical question. Only ask the question, no preamble.`,
-        },
-      ],
-      temperature: 0.7,
+    const firstQuestion = await generateQuestion({
+      domain,
+      difficulty: "Easy",
+      previousQuestions: [],
     });
-
-    const firstQuestion =
-      completion.choices[0].message.content ||
-      "Tell me about yourself and your experience.";
 
     const interview = await Interview.create({
       userId: req.userId,
@@ -74,11 +129,12 @@ const startInterview = async (req, res) => {
     res.status(201).json({
       sessionId: interview._id,
       question: firstQuestion,
+      difficulty: interview.difficulty,
     });
   } catch (err) {
     console.error("startInterview error:", err);
     res
-      .status(500)
+      .status(err.statusCode || 500)
       .json({ message: "Failed to start interview", error: err.message });
   }
 };
@@ -106,40 +162,55 @@ const submitAnswer = async (req, res) => {
     // 1️⃣ Generate feedback on the answer
     let feedback = "Focus on technical precision and support your answer with a concrete example.";
     let answerScore = 50;
-    try {
-      const feedbackResponse = await groq.chat.completions.create({
-        model,
-        messages: [
-          {
-            role: "user",
-            content: `You are an expert ${domain} interview evaluator.
-Provide constructive feedback on this interview answer in 2-3 sentences.
-Focus on:
-- Clarity and structure of the response
-- Technical accuracy and depth
-- Communication skills
-- Name the most important weakness and give one concrete way to improve it
+    const currentQuestion = [...interview.messages]
+      .reverse()
+      .find((message) => message.role === "ai")?.content;
 
+    if (isSkippedAnswer(answer)) {
+      answerScore = 0;
+      feedback = "This question was skipped, so it received 0 points.";
+    } else {
+      try {
+        const feedbackResponse = await groq.chat.completions.create({
+          model,
+          messages: [
+            {
+              role: "user",
+              content: `You are an expert ${domain} interview evaluator.
+Score the candidate's answer against the question, then provide constructive feedback in 2-3 sentences.
+Use this scoring rubric:
+- 0: skipped, no answer, or completely irrelevant
+- 1-49: weak understanding, major inaccuracies, or insufficient detail
+- 50-79: partially correct and relevant, but missing depth or clarity
+- 80-100: technically accurate, clear, detailed, and demonstrates strong understanding
+
+Question: "${currentQuestion || "No question available"}"
 Answer: "${answer}"
 
 Return ONLY valid JSON in this exact shape: {"score": 0, "feedback": "..."}
-The score must be an integer from 10 to 100. Do not include markdown or extra text.`
-          },
-        ],
-        temperature: 0.7,
-        max_tokens: 200,
-      });
+The score must be an integer from 0 to 100. Do not include markdown or extra text.`,
+            },
+          ],
+          temperature: 0.3,
+           max_tokens: 400,
+           reasoning_effort: "low",
+        });
 
-      const evaluatorText = feedbackResponse.choices[0].message.content.trim();
-      try {
-        const parsed = JSON.parse(evaluatorText);
-        answerScore = Math.max(10, Math.min(100, Number(parsed.score) || 50));
-        feedback = typeof parsed.feedback === "string" ? parsed.feedback : feedback;
-      } catch {
-        feedback = evaluatorText || feedback;
+        const evaluatorText = feedbackResponse.choices[0].message.content.trim();
+        try {
+          const parsed = JSON.parse(evaluatorText);
+          const parsedScore = Number(parsed.score);
+          answerScore = Number.isFinite(parsedScore)
+            ? Math.round(Math.max(0, Math.min(100, parsedScore)))
+            : 0;
+          feedback = typeof parsed.feedback === "string" ? parsed.feedback : feedback;
+        } catch {
+          feedback = evaluatorText || feedback;
+          answerScore = 0;
+        }
+      } catch (err) {
+        console.error("Answer evaluation failed; continuing to next question:", err.message);
       }
-    } catch (err) {
-      console.error("Answer evaluation failed; continuing to next question:", err.message);
     }
 
     const isComplete = questionsAnswered >= 9; // complete after at least 10 answered questions (0-9)
@@ -153,6 +224,11 @@ The score must be an integer from 10 to 100. Do not include markdown or extra te
     interview.feedback = [interview.feedback, feedback].filter(Boolean).join("\n\n");
     interview.questionsAnswered = questionsAnswered + 1;
     interview.answerScores.push(answerScore);
+    const performanceLevel = getPerformanceLevel(answerScore);
+    interview.difficulty = getNextDifficulty(
+      interview.difficulty,
+      performanceLevel,
+    );
 
     // ── Complete path ──────────────────────────────────────
     if (isComplete) {
@@ -167,51 +243,25 @@ The score must be an integer from 10 to 100. Do not include markdown or extra te
       );
       interview.improvementSuggestions = interview.feedback;
       await interview.save();
-      return res.json({ score: interview.score, isComplete: true });
+      return res.json({
+        score: interview.score,
+        answerScore,
+        performanceLevel,
+        difficulty: interview.difficulty,
+        isComplete: true,
+      });
     }
 
     // ── Continue path ──────────────────────────────────────
     const questionHistory = interview.messages
       .filter((message) => message.role === "ai")
       .map((message) => message.content);
-    const availableFallbacks = fallbackQuestions(domain);
-    let nextQuestion = availableFallbacks.find(
-      (question) => !isDuplicateQuestion(question, questionHistory),
-    ) || `${domain}: What is a technical decision you would revisit in this project, and why?`;
-
-    for (let attempt = 0; attempt < 2; attempt += 1) {
-      try {
-        const nextQuestionResponse = await groq.chat.completions.create({
-          model,
-          messages: [
-            {
-              role: "user",
-              content: `You are an expert ${domain} interviewer. Generate the NEXT interview question based on the previous answer.
-Do not repeat or paraphrase any question from this list:
-- ${questionHistory.join("\n- ") || "None"}
-The question should:
-- Be different from typical generic interview questions
-- Build on topics relevant to ${domain}
-- Be open-ended and professional
-- Test deeper understanding of the domain
-
-Previous answer context: "${answer.substring(0, 100)}..."
-
-Return ONLY the new question, nothing else.`,
-            },
-          ],
-          temperature: 0.9,
-          max_tokens: 150,
-        });
-        const generatedQuestion = nextQuestionResponse.choices[0].message.content.trim();
-        if (generatedQuestion && !isDuplicateQuestion(generatedQuestion, questionHistory)) {
-          nextQuestion = generatedQuestion;
-          break;
-        }
-      } catch (err) {
-        console.error("Next question generation failed; using fallback:", err.message);
-      }
-    }
+    const nextQuestion = await generateQuestion({
+      domain,
+      difficulty: interview.difficulty,
+      previousQuestions: questionHistory,
+      answer,
+    });
 
     interview.messages.push({
       role: "ai",
@@ -221,11 +271,17 @@ Return ONLY the new question, nothing else.`,
 
     await interview.save();
 
-    return res.json({ nextQuestion, isComplete: false });
+    return res.json({
+      nextQuestion,
+      answerScore,
+      performanceLevel,
+      difficulty: interview.difficulty,
+      isComplete: false,
+    });
   } catch (err) {
     console.error("submitAnswer error:", err);
     res
-      .status(500)
+      .status(err.statusCode || 500)
       .json({ message: "Internal server error", error: err.message });
   }
 };

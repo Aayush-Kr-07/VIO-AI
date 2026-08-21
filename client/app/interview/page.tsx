@@ -43,6 +43,7 @@ export default function InterviewPage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [questionsAnswered, setQuestionsAnswered] = useState(0);
+  const [difficulty, setDifficulty] = useState("Easy");
   const [isLoading, setIsLoading] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const [secondsRemaining, setSecondsRemaining] = useState(600);
@@ -58,6 +59,7 @@ export default function InterviewPage() {
         domain: selectedDomain,
       });
       setSessionId(data.sessionId);
+      setDifficulty(data.difficulty || "Easy");
       setMessages([
         {
           id: `${data.sessionId}-question`,
@@ -118,8 +120,15 @@ export default function InterviewPage() {
         "/api/interviews/submit-answer",
         { sessionId, answer, domain, questionsAnswered },
       );
+      setDifficulty(data.difficulty || difficulty);
       setMessages((current) => [
         ...current,
+        {
+          id: `${sessionId}-score-${questionsAnswered}`,
+          content: `Score: ${data.answerScore}/100 (${data.performanceLevel}). Next question difficulty: ${data.difficulty}.`,
+          isUser: false,
+          timestamp: new Date(),
+        },
         ...(data.nextQuestion
           ? [
               {
@@ -188,6 +197,9 @@ export default function InterviewPage() {
           <div>
             <p className="text-sm font-medium text-blue-600">Live session</p>
             <h1 className="text-2xl font-bold text-blue-950">{domain} interview</h1>
+            <p className="mt-1 text-sm font-medium text-blue-700">
+              Difficulty: {difficulty}
+            </p>
           </div>
           <div className="flex items-center gap-3">
             <span className={`rounded-lg px-3 py-2 text-sm font-bold ${secondsRemaining <= 30 ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
