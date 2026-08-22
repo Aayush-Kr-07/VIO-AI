@@ -107,7 +107,11 @@ function ResumePanel({
       setAnalysis(data.analysis);
       setStep("results");
     } catch (error: any) {
-      setError(error?.response?.data?.message);
+      setError(
+        error?.response?.data?.message ||
+          error?.response?.data?.error ||
+          "Unable to analyse your resume. Please try again.",
+      );
       setStep("upload");
     } finally {
       clearInterval(interval);

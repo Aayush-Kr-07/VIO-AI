@@ -1,7 +1,7 @@
 const express = require("express");
 const { protect } = require("../middleware/auth.js");
 const multer = require("multer");
-const { analyzeResume } = require("../controllers/resumeController.js");
+const { analyzeResume } = require("../controllers/resumecontroller.js");
 const router = express.Router();
 
 const upload = multer({

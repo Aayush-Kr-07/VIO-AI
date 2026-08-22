@@ -15,6 +15,10 @@ const DOMAINS = [
   "Database Design",
   "General",
 ];
+
+const sendError = (res, status, message) =>
+        res.status(status).json({ message, error: message });
+
 async function extractTextFromPDF(buffer){
     const pdfjsLib = await import("pdfjs-dist/legacy/build/pdf.mjs");
     const uint8Array = new Uint8Array(buffer);
@@ -32,7 +36,7 @@ async function extractTextFromPDF(buffer){
 const analyzeResume = async (req, res) => {
     try {
         if (!req.file) {
-            return res.status(400).json({ error: "No file uploaded" });
+            return sendError(res, 400, "No file uploaded");
         }
         let resumeText;
         if (req.file.mimetype === "application/pdf") {
@@ -42,7 +46,7 @@ const analyzeResume = async (req, res) => {
             resumeText = req.file.buffer.toString("utf-8");
         }
         if(!resumeText || resumeText.trim().length < 50){
-            return res.status(400).json({ error: "Failed to extract text from resume" });
+            return sendError(res, 400, "Failed to extract text from resume");
         }
         const truncated=resumeText.slice(0, 6000);
          const prompt = `
@@ -91,7 +95,7 @@ Rules:
             analysis = jsonMatch ? JSON.parse(jsonMatch[0]) : null;
 
         }catch{
-            return res.status(500).json({ error: "Failed to parse analysis result" });
+            return sendError(res, 500, "Failed to parse analysis result");
         }
         const validDomains=DOMAINS
         if(analysis && analysis.recommendedDomains){
@@ -100,7 +104,7 @@ Rules:
         res.json({ analysis });
     } catch (error) {
         console.error("Error analyzing resume:", error);
-        res.status(500).json({ error: "Internal server error" });
+        res.status(500).json({ message: "Internal server error", error: "Internal server error" });
     }
 }
 module.exports = {
