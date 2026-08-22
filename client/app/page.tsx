@@ -41,9 +41,9 @@ const extraHighlights = [
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(37,99,235,0.18),_transparent_35%),linear-gradient(to_bottom,_#eff6ff,_#ffffff_30%,_#f0f9ff)] text-slate-900">
-      <section className="mx-auto flex max-w-7xl flex-col px-4 pb-20 pt-12 sm:px-6 lg:px-8 lg:pt-20">
-        <div className="grid items-center gap-12 lg:grid-cols-[1.2fr_0.8fr]">
+    <main className="min-h-screen bg-transparent text-slate-900">
+      <section className="mx-auto flex max-w-7xl flex-col px-4 pb-12 pt-8 sm:px-6 sm:pb-20 sm:pt-12 lg:px-8 lg:pt-20">
+        <div className="grid items-center gap-8 lg:grid-cols-[1.2fr_0.8fr] lg:gap-12">
           <div>
             <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-medium text-blue-700 shadow-sm">
               <Sparkles className="h-4 w-4" />
@@ -58,27 +58,27 @@ export default function Home() {
               Practice AI powered mock interviews tailored to your domain.
             </p>
 
-            <div className="mt-8 flex flex-wrap items-center gap-4">
+            <div className="mt-8 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:gap-4">
               <Link
                 href="/register"
-                className="inline-flex items-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 sm:w-auto"
               >
                 Get Started Free
                 <ArrowRight className="h-4 w-4" />
               </Link>
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white px-6 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-400 hover:text-blue-800"
+                className="inline-flex items-center justify-center gap-2 rounded-full border border-blue-200 bg-white px-6 py-3 text-sm font-semibold text-blue-700 shadow-sm transition hover:border-blue-400 hover:text-blue-800 sm:w-auto"
               >
                 Login
               </Link>
             </div>
 
-            <div className="mt-8 flex flex-wrap gap-3">
+            <div className="mt-8 flex flex-wrap gap-2 sm:gap-3">
               {extraHighlights.map((item) => (
                 <div
                   key={item}
-                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-2 text-sm text-slate-700 shadow-sm"
+                  className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/80 px-3 py-2 text-xs text-slate-700 shadow-sm sm:text-sm"
                 >
                   <CheckCircle2 className="h-4 w-4 text-blue-600" />
                   {item}
@@ -88,8 +88,8 @@ export default function Home() {
           </div>
 
           <div className="relative">
-            <div className="rounded-[2rem] border border-blue-100 bg-white p-5 shadow-[0_30px_80px_rgba(37,99,235,0.14)] ring-1 ring-blue-100">
-              <div className="rounded-[1.5rem] bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-500 p-6 text-white">
+            <div className="rounded-[2rem] border border-blue-100 bg-white p-3 shadow-[0_30px_80px_rgba(37,99,235,0.14)] ring-1 ring-blue-100 sm:p-5">
+              <div className="rounded-[1.5rem] bg-gradient-to-br from-blue-600 via-blue-700 to-cyan-500 p-4 text-white sm:p-6">
                 <div className="mb-6 flex items-center justify-between">
                   <div>
                     <p className="text-sm uppercase tracking-[0.2em] text-blue-100">Mock Session</p>

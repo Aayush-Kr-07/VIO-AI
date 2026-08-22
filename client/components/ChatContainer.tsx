@@ -11,7 +11,7 @@ interface ChatContainerProps {
 }
 const ChatContainer = ({ messages, isLoading }: ChatContainerProps) => {
   return (
-    <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-gray-50">
+    <div className="flex-1 min-h-0 space-y-4 overflow-y-auto bg-gray-50 p-3 sm:p-6">
       {messages.length === 0 && !isLoading && (
         <div className="flex items-center justify-center h-full text-gray-500">
           <p>Start an interview to begin</p>
@@ -23,7 +23,7 @@ const ChatContainer = ({ messages, isLoading }: ChatContainerProps) => {
           className={`flex ${message.isUser ? "justify-end" : "justify-start"} mb-4`}
         >
           <div
-            className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+            className={`max-w-[85%] break-words rounded-lg px-3 py-2 sm:max-w-xs sm:px-4 lg:max-w-md ${
               message.isUser
                 ? "bg-blue-500 text-white rounded-br-none"
                 : "bg-gray-200 text-gray-900 rounded-bl-none"

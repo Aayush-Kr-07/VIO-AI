@@ -191,17 +191,17 @@ export default function InterviewPage() {
   if (authLoading || !isLoggedIn) return null;
 
   return (
-    <main className="flex min-h-[calc(100vh-73px)] flex-col bg-blue-50/60">
-      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-4 py-8">
-        <div className="mb-5 flex items-center justify-between gap-4">
+    <main className="flex min-h-[calc(100vh-73px)] flex-col bg-blue-50/45">
+      <div className="mx-auto flex w-full max-w-4xl flex-1 flex-col px-3 py-5 sm:px-4 sm:py-8">
+        <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="text-sm font-medium text-blue-600">Live session</p>
-            <h1 className="text-2xl font-bold text-blue-950">{domain} interview</h1>
+            <h1 className="break-words text-2xl font-bold text-blue-950">{domain} interview</h1>
             <p className="mt-1 text-sm font-medium text-blue-700">
               Difficulty: {difficulty}
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center justify-between gap-3 sm:justify-end">
             <span className={`rounded-lg px-3 py-2 text-sm font-bold ${secondsRemaining <= 30 ? "bg-red-100 text-red-700" : "bg-blue-100 text-blue-700"}`}>
               {Math.floor(secondsRemaining / 60)}:{String(secondsRemaining % 60).padStart(2, "0")}
             </span>
@@ -221,7 +221,7 @@ export default function InterviewPage() {
           </div>
         )}
 
-        <section className="flex min-h-[520px] flex-1 flex-col overflow-hidden rounded-xl border border-blue-100 bg-white shadow-sm shadow-blue-100/60">
+        <section className="flex min-h-[420px] flex-1 flex-col overflow-hidden rounded-xl border border-blue-100 bg-white shadow-sm shadow-blue-100/60 sm:min-h-[520px]">
           <ChatContainer messages={messages} isLoading={isLoading && messages.length > 0} />
           <InputBox onSend={handleSend} disabled={!sessionId || isLoading || isFinishing} />
         </section>

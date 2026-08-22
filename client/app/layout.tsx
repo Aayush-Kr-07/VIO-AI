@@ -23,7 +23,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html lang="en" className={` font-sans antialiased`}>
-      <body>
+      <body className="live-background">
         <AuthProvider>
           <Navbar />
           {children}

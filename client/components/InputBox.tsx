@@ -24,7 +24,7 @@ export function InputBox({ onSend, disabled }: InputBoxProps){
     }
   };
     return (
-      <div className="border-t border-border bg-background p-4">
+      <div className="border-t border-border bg-background p-3 sm:p-4">
       <div className="flex gap-2">
         <Input
           type="text"

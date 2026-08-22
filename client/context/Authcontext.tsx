@@ -18,6 +18,7 @@ import {
   setToken,
   StoredUser,
 } from "@/lib/auth";
+import axios from "axios";
 
 // ── Types ─────────────────────────────────────────────────
 interface AuthContextValue {
@@ -33,6 +34,15 @@ interface AuthContextValue {
 
 // ── Context ───────────────────────────────────────────────
 const AuthContext = createContext<AuthContextValue | null>(null);
+
+const wait = (duration: number) =>
+  new Promise<void>((resolve) => window.setTimeout(resolve, duration));
+
+const isTransientLoginError = (error: unknown) => {
+  if (!axios.isAxiosError(error)) return true;
+  const status = error.response?.status;
+  return !status || status >= 500;
+};
 
 // ── Provider ──────────────────────────────────────────────
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -60,10 +70,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (email: string, password: string) => {
       setIsLoading(true);
       try {
-        const { data } = await axiosInstance.post("/api/auth/login", {
-          email,
-          password,
-        });
+        let data;
+        for (let attempt = 0; attempt < 2; attempt += 1) {
+          try {
+            const response = await axiosInstance.post("/api/auth/login", {
+              email: email.trim(),
+              password,
+            });
+            data = response.data;
+            break;
+          } catch (error) {
+            if (attempt === 1 || !isTransientLoginError(error)) throw error;
+            await wait(800);
+          }
+        }
 
         setToken(data.token);
         setStoredUser(data.user);

@@ -41,19 +41,19 @@ const LoginPage = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-blue-50 via-blue-100 to-cyan-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-transparent px-3 py-6 sm:px-4">
       <div className="w-full max-w-md">
         {/* Logo/Header */}
-        <div className="text-center mb-8">
+        <div className="mb-6 text-center sm:mb-8">
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-lg bg-gradient-to-br from-violet-600 to-violet-700 mb-4">
-            <span className="text-white font-bold text-lg">AI</span>
+            <span className="text-white font-bold text-lg">VIO</span>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome Back</h1>
+          <h1 className="mb-2 text-2xl font-bold text-gray-900 sm:text-3xl">Welcome Back</h1>
           <p className="text-gray-600">Sign in to your MockInterview account</p>
         </div>
 
         {/* Login Card */}
-        <div className="bg-white rounded-2xl shadow-lg p-8 border border-gray-100">
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 shadow-lg sm:p-8">
           <form onSubmit={handleSubmit} className="space-y-5">
             {/* Error Message */}
             {error && (

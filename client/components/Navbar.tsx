@@ -30,13 +30,13 @@ const Navbar = () => {
   const firstName = user?.name?.split(" ")[0] || "User";
 
   return (
-    <header className="border-b border-blue-100 bg-white/95 px-4 py-3 shadow-sm">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4">
+    <header className="border-b border-blue-100 bg-white/95 px-3 py-3 shadow-sm sm:px-4">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-4">
         <Link href="/" className="logo">
-          <span className="logo-mark">VIO</span>
+          <span className="logo-mark h-10 w-10 text-sm sm:h-11 sm:w-11 sm:text-base">VIO</span>
           <div className="logo-text">
             <span className="logo-primary">VIO AI</span>
-            <span className="logo-sub"><p>Talk to VioAI. Get Hired Tomorrow.</p></span>
+            <span className="logo-sub hidden sm:block"><p>Talk to VioAI. Get Hired Tomorrow.</p></span>
           </div>
         </Link>
 
@@ -52,7 +52,7 @@ const Navbar = () => {
           ))}
         </nav>
 
-        <div className="ml-auto flex items-center gap-3">
+        <div className="ml-auto hidden items-center gap-3 sm:flex">
           {isLoggedIn && user ? (
             <>
               <div className="flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 shadow-sm">
@@ -80,7 +80,7 @@ const Navbar = () => {
         <button
           type="button"
           onClick={() => setMobileOpen((value) => !value)}
-          className="relative flex h-9 w-9 flex-col items-center justify-center gap-1.5 rounded-xl transition hover:bg-blue-50 md:hidden"
+          className="relative flex h-9 w-9 shrink-0 flex-col items-center justify-center gap-1.5 rounded-xl transition hover:bg-blue-50 md:hidden"
           aria-label="Toggle menu"
         >
           <span

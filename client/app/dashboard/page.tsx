@@ -547,8 +547,8 @@ const page = () => {
       : interviews.filter((i) => i.topic === filterDomain);
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12 space-y-8">
+    <div className="min-h-screen bg-transparent">
+      <div className="mx-auto max-w-6xl space-y-6 px-3 py-6 sm:px-6 md:space-y-8 md:py-12 lg:px-8">
         {/* ── Header ── */}
         <section className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
@@ -562,7 +562,7 @@ const page = () => {
           <Button
             size="lg"
             onClick={() => setShowDomainSelector(true)}
-            className="bg-gradient-to-r from-primary to-accent hover:opacity-90 text-white rounded-full px-6 font-semibold shadow-md hover:shadow-lg transition-all self-start sm:self-auto"
+            className="self-start rounded-full bg-gradient-to-r from-primary to-accent px-4 font-semibold text-white shadow-md transition-all hover:opacity-90 hover:shadow-lg sm:self-auto sm:px-6"
           >
             ⚡ New Interview
           </Button>
@@ -607,7 +607,7 @@ const page = () => {
           ].map((stat, i) => (
             <Card
               key={i}
-              className={`p-5 border ${
+              className={`border p-3 sm:p-5 ${
                 (stat as any).accent
                   ? "border-primary/30 bg-primary/[0.03]"
                   : "border-border/50"
@@ -656,7 +656,7 @@ const page = () => {
           </Card>
         )}
         <section>
-          <div className="flex items-center gap-1 mb-6 border-b border-border/50">
+            <div className="mb-6 flex items-center gap-1 overflow-x-auto border-b border-border/50">
             {(["history", "resume"] as const).map((tab) => (
               <button
                 key={tab}
@@ -680,7 +680,7 @@ const page = () => {
                   Your recent practice sessions
                 </p>
                 {uniqueDomains.length > 1 && (
-                  <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-nowrap gap-2 overflow-x-auto pb-1">
                     {uniqueDomains.map((d) => (
                       <button
                         key={d}
@@ -754,9 +754,9 @@ const page = () => {
                     return (
                       <Card
                         key={interview.id}
-                        className="p-5 border border-border/50 hover:border-primary/40 hover:shadow-sm transition-all group"
+                        className="border border-border/50 p-3 transition-all hover:border-primary/40 hover:shadow-sm group sm:p-5"
                       >
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3 sm:gap-4">
                           <div className="w-11 h-11 rounded-xl bg-muted/50 border border-border/60 flex items-center justify-center text-xl flex-shrink-0 group-hover:border-primary/30 transition-colors">
                             {meta?.icon || "🎯"}
                           </div>
@@ -922,7 +922,6 @@ const page = () => {
                 className="w-8 h-8 rounded-full bg-muted hover:bg-muted/80 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors text-sm"
               >
                 ✕
-                              disabled={detailsLoading}
               </button>
             </div>
 
