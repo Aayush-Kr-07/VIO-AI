@@ -1,5 +1,6 @@
 const Groq = require("groq-sdk");
 const Interview = require("../models/Interview.js");
+const { calculateForUser } = require("./readinesscontroller.js");
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -243,6 +244,9 @@ The score must be an integer from 0 to 100. Do not include markdown or extra tex
       );
       interview.improvementSuggestions = interview.feedback;
       await interview.save();
+      calculateForUser(req.userId).catch((error) =>
+        console.error("Readiness recalculation failed:", error.message),
+      );
       return res.json({
         score: interview.score,
         answerScore,
@@ -311,6 +315,9 @@ const finishInterview = async (req, res) => {
         interview.feedback ||
         "Answer with more technical detail and concrete examples.";
       await interview.save();
+      calculateForUser(req.userId).catch((error) =>
+        console.error("Readiness recalculation failed:", error.message),
+      );
     }
 
     return res.json({ score: interview.score, isComplete: true });

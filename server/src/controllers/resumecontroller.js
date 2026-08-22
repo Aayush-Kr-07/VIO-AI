@@ -1,4 +1,5 @@
 const Groq = require("groq-sdk");
+const User = require("../user.js");
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -101,6 +102,7 @@ Rules:
         if(analysis && analysis.recommendedDomains){
             analysis.recommendedDomains=analysis.recommendedDomains.filter(d=> validDomains.includes(d.label));
         }
+        await User.findByIdAndUpdate(req.userId, { $set: { resumeAnalysis: analysis } });
         res.json({ analysis });
     } catch (error) {
         console.error("Error analyzing resume:", error);

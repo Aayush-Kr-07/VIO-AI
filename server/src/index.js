@@ -5,6 +5,7 @@ require("dotenv").config();
 const authRoutes = require("./routes/auth.js");
 const interviewsRoutes = require("./routes/interview.js");
 const resumeRoutes = require("./routes/resume");
+const readinessRoutes = require("./routes/readiness.js");
 const startServer = async () => {
   const dbConnected = await connectDB();
   const app = express();
@@ -18,6 +19,7 @@ const startServer = async () => {
   // ── Routes ──────────────────────────────────────────────
   app.use("/api/auth", authRoutes);
   app.use("/api/interviews", interviewsRoutes);
+  app.use("/api/readiness", readinessRoutes);
   const PORT = process.env.PORT || 5000;
 
   app.get("/", (req, res) => {

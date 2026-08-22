@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, lowercase: true, unique: true },
   password: { type: String, required: true, minlength: 6 },
   createdAt: { type: Date, default: Date.now },
+  resumeAnalysis: { type: mongoose.Schema.Types.Mixed, default: null },
 });
 
 userSchema.pre("save", async function () {

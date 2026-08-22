@@ -30,6 +30,20 @@ interface ResumeAnalysis {
   skillsDetected: string[];
 }
 
+interface Readiness {
+  score: number;
+  classification: string;
+  confidence: number;
+  summary: string;
+  strengths: string[];
+  weaknesses: string[];
+  candidateType: string;
+  components: { resume: number; interview: number; skills: number };
+  gaps: { technical: string[]; communication: string[]; industry: string[] };
+  roadmap: { category: string; title: string; reason: string; priority: string }[];
+  history: { score: number; classification: string; createdAt: string }[];
+}
+
 const INTERVIEW_DOMAINS = [
   {
     label: "JavaScript/Node.js",
@@ -46,8 +60,10 @@ const INTERVIEW_DOMAINS = [
 ];
 function ResumePanel({
   onDomainSelect,
+  onAnalysis,
 }: {
   onDomainSelect: (d: string) => void;
+  onAnalysis: (analysis: ResumeAnalysis) => void;
 }) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [file, setFile] = useState<File | null>(null);
@@ -105,6 +121,7 @@ function ResumePanel({
         },
       );
       setAnalysis(data.analysis);
+      onAnalysis(data.analysis);
       setStep("results");
     } catch (error: any) {
       setError(
@@ -459,6 +476,11 @@ const page = () => {
   const [selectedInterview, setSelectedInterview] = useState<InterviewDetails | null>(null);
   const [detailsLoading, setDetailsLoading] = useState(false);
   const [deletingInterviewId, setDeletingInterviewId] = useState<string | null>(null);
+  const [resumeAnalysis, setResumeAnalysis] = useState<ResumeAnalysis | null>(null);
+  const [readiness, setReadiness] = useState<Readiness | null>(null);
+  const [candidateType, setCandidateType] = useState("Fresher");
+  const [readinessLoading, setReadinessLoading] = useState(false);
+  const [readinessError, setReadinessError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !isLoggedIn) {
@@ -469,6 +491,30 @@ const page = () => {
   useEffect(() => {
     if (isLoggedIn) fetchInterviews();
   }, [isLoggedIn]);
+  useEffect(() => {
+    if (!isLoggedIn) return;
+    axiosInstance.get("/api/readiness").then(({ data }) => {
+      if (data.readiness) {
+        setReadiness(data.readiness);
+        setCandidateType(data.readiness.candidateType || "Fresher");
+      }
+    }).catch(() => undefined);
+  }, [isLoggedIn]);
+  const recalculateReadiness = async () => {
+    try {
+      setReadinessLoading(true);
+      setReadinessError(null);
+      const { data } = await axiosInstance.post("/api/readiness/calculate", {
+        candidateType,
+        resumeAnalysis,
+      });
+      setReadiness(data.readiness);
+    } catch (error: any) {
+      setReadinessError(error?.response?.data?.error || error?.response?.data?.message || "Unable to update readiness right now.");
+    } finally {
+      setReadinessLoading(false);
+    }
+  };
   const fetchInterviews = async () => {
     try {
       setDataLoading(true);
@@ -636,6 +682,31 @@ const page = () => {
             </Card>
           ))}
         </section>
+        <Card className="border border-blue-200/70 bg-blue-50/40 p-5 sm:p-6">
+          <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-bold uppercase tracking-wider text-blue-600">Placement Readiness Engine</p>
+              <div className="mt-2 flex items-end gap-3">
+                <span className="text-5xl font-black text-blue-950">{readiness ? readiness.score : "--"}</span>
+                <span className="pb-1 text-sm text-muted-foreground">/ 100</span>
+              </div>
+              <p className="mt-1 text-sm font-semibold text-blue-800">{readiness?.classification || "Add your signals to calculate a score"}</p>
+              {readiness && <p className="mt-2 text-xs text-muted-foreground">Resume {readiness.components.resume}% · Interviews {readiness.components.interview}% · Skills {readiness.components.skills}%</p>}
+            </div>
+            <div className="w-full max-w-md space-y-3">
+              <label className="block text-xs font-semibold text-foreground">Candidate profile
+                <select value={candidateType} onChange={(event) => setCandidateType(event.target.value)} className="mt-1 w-full rounded-lg border border-border bg-white px-3 py-2 text-sm">
+                  <option>Fresher</option><option>Internship Seeker</option><option>Experienced Candidate</option>
+                </select>
+              </label>
+              <Button onClick={recalculateReadiness} disabled={readinessLoading} className="w-full bg-blue-600 text-white hover:bg-blue-700">{readinessLoading ? "Updating..." : "Calculate readiness"}</Button>
+              {readinessError && <p className="text-xs text-red-600">{readinessError}</p>}
+            </div>
+          </div>
+          {Array.isArray(readiness?.roadmap) && readiness.roadmap.length ? <div className="mt-6 border-t border-blue-200/70 pt-4"><p className="text-sm font-bold text-foreground">Your improvement roadmap</p><div className="mt-3 grid gap-2 sm:grid-cols-2">{readiness.roadmap.slice(0, 6).map((item) => <div key={`${item.category}-${item.title}`} className="rounded-lg border border-border/60 bg-white p-3"><p className="text-xs font-bold text-blue-700">{item.category} · {item.priority}</p><p className="mt-1 text-sm font-semibold text-foreground">{item.title}</p><p className="mt-1 text-xs text-muted-foreground">{item.reason}</p></div>)}</div></div> : null}
+          {readiness?.summary ? <div className="mt-6 border-t border-blue-200/70 pt-4"><div className="flex items-center justify-between gap-3"><p className="text-sm font-bold text-foreground">AI assessment</p><p className="text-xs text-muted-foreground">Confidence {readiness.confidence}%</p></div><p className="mt-2 text-sm text-muted-foreground">{readiness.summary}</p>{readiness.strengths?.length ? <p className="mt-3 text-xs text-emerald-700"><strong>Strengths:</strong> {readiness.strengths.join(" · ")}</p> : null}{readiness.weaknesses?.length ? <p className="mt-2 text-xs text-amber-700"><strong>Focus areas:</strong> {readiness.weaknesses.join(" · ")}</p> : null}</div> : null}
+          {readiness?.history?.length ? <p className="mt-4 text-xs text-muted-foreground">{readiness.history.length} readiness snapshots saved. Your score updates after each completed interview.</p> : null}
+        </Card>
         {recentScores.length >= 2 && (
           <Card className="p-5 border border-border/50">
             <div className="flex items-center justify-between">
@@ -837,7 +908,7 @@ const page = () => {
             </div>
           )}
           {activeTab === "resume" && (
-            <ResumePanel onDomainSelect={handleSelectDomain} />
+            <ResumePanel onDomainSelect={handleSelectDomain} onAnalysis={setResumeAnalysis} />
           )}
         </section>
       </div>
