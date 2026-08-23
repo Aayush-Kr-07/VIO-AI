@@ -36,6 +36,7 @@ const evaluateReadiness = async ({
       model,
       temperature: 0.2,
       max_tokens: 1400,
+      response_format: { type: "json_object" },
       messages: [
         {
           role: "user",
@@ -65,9 +66,18 @@ All numeric values must be integers from 0 to 100. Make the components independe
         },
       ],
     });
-    const raw = response.choices?.[0]?.message?.content || "";
-    const match = raw.match(/\{[\s\S]*\}/);
-    const evaluation = match ? JSON.parse(match[0]) : null;
+    const raw = response.choices?.[0]?.message?.content?.trim() || "";
+    const jsonText = raw.replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
+    let evaluation;
+    try {
+      evaluation = JSON.parse(jsonText);
+    } catch {
+      const start = jsonText.indexOf("{");
+      const end = jsonText.lastIndexOf("}");
+      evaluation = start >= 0 && end > start
+        ? JSON.parse(jsonText.slice(start, end + 1))
+        : null;
+    }
     if (!evaluation || !Number.isFinite(Number(evaluation.score))) {
       throw new Error("AI returned an invalid readiness evaluation");
     }
