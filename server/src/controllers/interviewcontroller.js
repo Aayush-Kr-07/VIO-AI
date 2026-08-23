@@ -1,6 +1,7 @@
 const Groq = require("groq-sdk");
 const Interview = require("../models/Interview.js");
 const { calculateForUser } = require("./readinesscontroller.js");
+const { getCompanyProfile } = require("../config/companyProfiles.js");
 
 const groq = new Groq({
   apiKey: process.env.GROQ_API_KEY,
@@ -50,7 +51,7 @@ const isCodingQuestion = (question) =>
     question,
   );
 
-const generateQuestion = async ({ domain, difficulty, previousQuestions, answer }) => {
+const generateQuestion = async ({ domain, difficulty, previousQuestions, answer, profile }) => {
   let lastError;
 
   for (let attempt = 0; attempt < 3; attempt += 1) {
@@ -60,7 +61,8 @@ const generateQuestion = async ({ domain, difficulty, previousQuestions, answer 
         messages: [
           {
             role: "system",
-            content: `You are a senior ${domain} technical interviewer.
+            content: `You are a senior ${profile.name} ${domain} technical interviewer.
+The company interview profile is: style=${profile.style}; question categories=${profile.categories}; technical focus=${profile.technicalFocus}.
 Generate exactly one original interview question for the selected domain.
 The question must be ${difficulty} difficulty, specific, professional, and answerable in natural language.
 Ask only conceptual, definition, comparison, explanation, or real-world scenario questions.
@@ -76,7 +78,7 @@ ${previousQuestions.join("\n- ") || "None"}
 
 ${answer ? `The candidate's previous answer was: "${answer.substring(0, 500)}"` : "This is the first question."}
 
-Generate a new ${difficulty} difficulty ${domain} interview question now.`,
+Generate a new ${difficulty} difficulty ${domain} interview question now, aligned to the ${profile.name} profile.`,
           },
         ],
         temperature: 0.9,
@@ -112,18 +114,24 @@ Generate a new ${difficulty} difficulty ${domain} interview question now.`,
 // ── Start Interview ───────────────────────────────────────
 const startInterview = async (req, res) => {
   try {
-    const { domain } = req.body;
+    const { domain, companyId } = req.body;
     if (!domain) return res.status(400).json({ message: "Domain is required" });
+    const profile = getCompanyProfile(companyId);
 
     const firstQuestion = await generateQuestion({
       domain,
-      difficulty: "Easy",
+      difficulty: profile.difficulty,
       previousQuestions: [],
+      profile,
     });
 
     const interview = await Interview.create({
       userId: req.userId,
       domain,
+      companyId: profile.id,
+      companyName: profile.name,
+      companyProfile: profile,
+      difficulty: profile.difficulty,
       messages: [{ role: "ai", content: firstQuestion }],
     });
 
@@ -131,6 +139,7 @@ const startInterview = async (req, res) => {
       sessionId: interview._id,
       question: firstQuestion,
       difficulty: interview.difficulty,
+      company: { id: profile.id, name: profile.name, style: profile.style, focus: profile.technicalFocus },
     });
   } catch (err) {
     console.error("startInterview error:", err);
@@ -159,6 +168,7 @@ const submitAnswer = async (req, res) => {
     });
     if (!interview)
       return res.status(404).json({ message: "Session not found" });
+    const profile = interview.companyProfile || getCompanyProfile(interview.companyId);
 
     // 1️⃣ Generate feedback on the answer
     let feedback = "Focus on technical precision and support your answer with a concrete example.";
@@ -177,7 +187,8 @@ const submitAnswer = async (req, res) => {
           messages: [
             {
               role: "user",
-              content: `You are an expert ${domain} interview evaluator.
+              content: `You are an expert ${profile.name} interview evaluator for ${domain}.
+Evaluate according to this company's criteria: ${profile.criteria}.
 Score the candidate's answer against the question, then provide constructive feedback in 2-3 sentences.
 Use this scoring rubric:
 - 0: skipped, no answer, or completely irrelevant
@@ -242,7 +253,13 @@ The score must be an integer from 0 to 100. Do not include markdown or extra tex
         1,
         Math.round((Date.now() - interview.createdAt.getTime()) / 60000),
       );
-      interview.improvementSuggestions = interview.feedback;
+      const report = await generatePerformanceReport(interview, profile);
+      interview.feedback = report.companyFeedback;
+      interview.improvementSuggestions = report.improvementSuggestions;
+      interview.strengths = report.strengths;
+      interview.weakAreas = report.weakAreas;
+      interview.companyFeedback = report.companyFeedback;
+      interview.meetsStandard = report.meetsStandard;
       await interview.save();
       calculateForUser(req.userId).catch((error) =>
         console.error("Readiness recalculation failed:", error.message),
@@ -253,6 +270,7 @@ The score must be an integer from 0 to 100. Do not include markdown or extra tex
         performanceLevel,
         difficulty: interview.difficulty,
         isComplete: true,
+        report,
       });
     }
 
@@ -265,6 +283,7 @@ The score must be an integer from 0 to 100. Do not include markdown or extra tex
       difficulty: interview.difficulty,
       previousQuestions: questionHistory,
       answer,
+      profile,
     });
 
     interview.messages.push({
@@ -287,6 +306,43 @@ The score must be an integer from 0 to 100. Do not include markdown or extra tex
     res
       .status(err.statusCode || 500)
       .json({ message: "Internal server error", error: err.message });
+  }
+};
+
+const generatePerformanceReport = async (interview, profile) => {
+  const fallback = {
+    strengths: ["Completed the interview and attempted each question."],
+    weakAreas: ["Add more precise examples and technical depth."],
+    companyFeedback: `${profile.name} report: keep building evidence against the ${profile.criteria} rubric.`,
+    improvementSuggestions: "Review the missed concepts and practise explaining trade-offs clearly.",
+    meetsStandard: interview.score >= profile.threshold,
+  };
+  try {
+    const response = await groq.chat.completions.create({
+      model,
+      messages: [{
+        role: "user",
+        content: `Create a concise ${profile.name} interview performance report using this rubric: ${profile.criteria}.
+Overall score: ${interview.score}/100
+Answer scores: ${interview.answerScores.join(", ")}
+Evaluator notes: ${interview.feedback}
+Return ONLY valid JSON: {"strengths":["..."],"weakAreas":["..."],"companyFeedback":"...","improvementSuggestions":"..."}. Use 2-4 short items in each array.`,
+      }],
+      temperature: 0.2,
+      max_tokens: 500,
+      reasoning_effort: "low",
+    });
+    const parsed = JSON.parse(response.choices[0].message.content.trim());
+    return {
+      strengths: Array.isArray(parsed.strengths) ? parsed.strengths.slice(0, 4) : fallback.strengths,
+      weakAreas: Array.isArray(parsed.weakAreas) ? parsed.weakAreas.slice(0, 4) : fallback.weakAreas,
+      companyFeedback: typeof parsed.companyFeedback === "string" ? parsed.companyFeedback : fallback.companyFeedback,
+      improvementSuggestions: typeof parsed.improvementSuggestions === "string" ? parsed.improvementSuggestions : fallback.improvementSuggestions,
+      meetsStandard: interview.score >= profile.threshold,
+    };
+  } catch (error) {
+    console.error("Performance report generation failed:", error.message);
+    return fallback;
   }
 };
 
@@ -314,13 +370,27 @@ const finishInterview = async (req, res) => {
       interview.improvementSuggestions =
         interview.feedback ||
         "Answer with more technical detail and concrete examples.";
+      const profile = interview.companyProfile || getCompanyProfile(interview.companyId);
+      const report = await generatePerformanceReport(interview, profile);
+      interview.feedback = report.companyFeedback;
+      interview.improvementSuggestions = report.improvementSuggestions;
+      interview.strengths = report.strengths;
+      interview.weakAreas = report.weakAreas;
+      interview.companyFeedback = report.companyFeedback;
+      interview.meetsStandard = report.meetsStandard;
       await interview.save();
       calculateForUser(req.userId).catch((error) =>
         console.error("Readiness recalculation failed:", error.message),
       );
     }
 
-    return res.json({ score: interview.score, isComplete: true });
+    return res.json({ score: interview.score, isComplete: true, report: {
+      strengths: interview.strengths,
+      weakAreas: interview.weakAreas,
+      companyFeedback: interview.companyFeedback,
+      improvementSuggestions: interview.improvementSuggestions,
+      meetsStandard: interview.meetsStandard,
+    } });
   } catch (err) {
     console.error("finishInterview error:", err);
     return res
