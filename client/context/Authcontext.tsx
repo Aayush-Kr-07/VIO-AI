@@ -1,34 +1,20 @@
 "use client";
 
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from "react";
+import { createContext, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import axiosInstance from "@/lib/axios";
-import {
-  clearAuth,
-  getStoredUser,
-  getToken,
-  setStoredUser,
-  setToken,
-  StoredUser,
-} from "@/lib/auth";
+import { clearAuth, setStoredUser, StoredUser } from "@/lib/auth";
 import axios from "axios";
 
 // ── Types ─────────────────────────────────────────────────
 interface AuthContextValue {
   user: StoredUser | null;
-  token: string | null;
+  token: boolean;
   isLoading: boolean;
   isLoggedIn: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
+  register: (name: string, email: string, password: string) => Promise<{ email: string }>;
+  logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
 
@@ -49,20 +35,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   const [user, setUser] = useState<StoredUser | null>(null);
-  const [token, setTokenState] = useState<string | null>(null);
+  const [token, setTokenState] = useState(false);
   const [isLoading, setIsLoading] = useState(true); // true on first load
 
-  // Hydrate from localStorage on mount
+  // Validate the HttpOnly session cookie before considering the user signed in.
   useEffect(() => {
-    const storedToken = getToken();
-    const storedUser = getStoredUser();
-
-    if (storedToken && storedUser) {
-      setTokenState(storedToken);
-      setUser(storedUser);
-    }
-
-    setIsLoading(false);
+    axiosInstance.get("/api/auth/me")
+      .then(({ data }) => { setStoredUser(data.user); setTokenState(true); setUser(data.user); })
+      .catch(() => { clearAuth(); setTokenState(false); setUser(null); })
+      .finally(() => setIsLoading(false));
   }, []);
 
   // ── Login ───────────────────────────────────────────────
@@ -85,9 +66,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         }
 
-        setToken(data.token);
         setStoredUser(data.user);
-        setTokenState(data.token);
+        setTokenState(true);
         setUser(data.user);
 
         router.push("/dashboard");
@@ -109,12 +89,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password,
         });
 
-        setToken(data.token);
-        setStoredUser(data.user);
-        setTokenState(data.token);
-        setUser(data.user);
-
-        router.push("/dashboard");
+        setTokenState(false);
+        setUser(null);
+        return { email: data.email };
       } finally {
         setIsLoading(false);
       }
@@ -123,9 +100,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ── Logout ──────────────────────────────────────────────
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try { await axiosInstance.post("/api/auth/logout"); } catch { /* session may already be expired */ }
     clearAuth();
-    setTokenState(null);
+    setTokenState(false);
     setUser(null);
     router.push("/");
   }, [router]);
@@ -137,8 +115,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setStoredUser(data.user);
       setUser(data.user);
     } catch {
-      // token invalid — log out
-      logout();
+      await logout();
     }
   }, [logout]);
 
@@ -147,7 +124,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       token,
       isLoading,
-      isLoggedIn: !!token && !!user,
+      isLoggedIn: token && !!user,
       login,
       register,
       logout,

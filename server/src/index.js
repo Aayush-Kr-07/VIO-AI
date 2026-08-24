@@ -11,7 +11,8 @@ const startServer = async () => {
   const app = express();
 
   // ── Middleware (BEFORE routes) ──────────────────────────
-  app.use(cors());
+  const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:3000").split(",").map((origin) => origin.trim());
+  app.use(cors({ origin: allowedOrigins, credentials: true }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use("/api/resume", resumeRoutes);

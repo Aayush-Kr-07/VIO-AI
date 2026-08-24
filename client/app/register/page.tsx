@@ -4,6 +4,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { AuthContext } from "@/context/Authcontext";
+import axiosInstance from "@/lib/axios";
+import axios from "axios";
 
 const RegisterPage = () => {
   const authContext = useContext(AuthContext);
@@ -19,6 +21,9 @@ const RegisterPage = () => {
     password: "",
   });
   const [error, setError] = useState("");
+  const [verificationCode, setVerificationCode] = useState("");
+  const [verificationStep, setVerificationStep] = useState(false);
+  const [registeredEmail, setRegisteredEmail] = useState("");
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,17 +39,34 @@ const RegisterPage = () => {
       return;
     }
 
-    if (formData.password.length < 6) {
-      setError("Password must be at least 6 characters");
+    if (formData.password.length < 10 || !/[A-Z]/.test(formData.password) || !/[a-z]/.test(formData.password) || !/[0-9]/.test(formData.password) || !/[^A-Za-z0-9]/.test(formData.password)) {
+      setError("Use 10+ characters with uppercase, lowercase, number, and special character");
       return;
     }
 
     try {
-      await register(formData.username, formData.email, formData.password);
-    } catch (err: any) {
-      setError(err.response?.data?.message || "Failed to register. Please try again.");
+      const result = await register(formData.username, formData.email, formData.password);
+      setRegisteredEmail(result.email);
+      setVerificationStep(true);
+    } catch (err: unknown) {
+      setError(axios.isAxiosError(err) ? err.response?.data?.message || "Failed to register. Please try again." : "Failed to register. Please try again.");
     }
   };
+
+  const handleVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError("");
+    try {
+      await axiosInstance.post("/api/auth/verify-email", { email: registeredEmail, code: verificationCode });
+      window.location.href = "/login?verified=1";
+    } catch (err: unknown) {
+      setError(axios.isAxiosError(err) ? err.response?.data?.message || "Verification failed." : "Verification failed.");
+    }
+  };
+
+  if (verificationStep) {
+    return <div className="flex min-h-screen items-center justify-center px-4"><div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-lg sm:p-8"><h1 className="text-2xl font-bold text-gray-900">Check your email</h1><p className="mt-2 text-sm text-gray-600">We sent a six-digit verification code to {registeredEmail}. Enter it below to finish creating your account. The code expires in one hour.</p><form onSubmit={handleVerify} className="mt-6 space-y-4"><label htmlFor="verification-code" className="block text-sm font-medium text-gray-900">Verification code</label><Input id="verification-code" aria-label="Verification code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required value={verificationCode} onChange={(e) => setVerificationCode(e.target.value)} placeholder="Enter 6-digit code" /><Button className="w-full">Verify and continue</Button>{error && <p className="text-sm text-red-700">{error}</p>}</form></div></div>;
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent px-3 py-6 sm:px-4">
@@ -126,7 +148,7 @@ const RegisterPage = () => {
                   disabled={isLoading}
                 />
               </div>
-              <p className="text-xs text-gray-500 mt-1">At least 6 characters</p>
+              <p className="text-xs text-gray-500 mt-1">10+ characters with upper/lowercase, number, and symbol</p>
             </div>
 
             {/* Submit Button */}

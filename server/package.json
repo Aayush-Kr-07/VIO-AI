@@ -4,7 +4,7 @@
   "description": "",
   "main": "src/index.js",
   "scripts": {
-    "start": "nodemon src/index.js", 
+    "start": "node src/index.js",
     "dev": "nodemon src/index.js"
   },
   "keywords": [],
@@ -20,6 +20,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.9.1",
     "multer": "^2.2.0",
+    "nodemailer": "^9.0.5",
     "nodemon": "^3.1.14",
     "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^6.2.108"
