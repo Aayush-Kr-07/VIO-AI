@@ -19,8 +19,9 @@ const passwordError = (password) => {
   return null;
 };
 const publicUser = (user) => ({ id: user._id, name: user.name, email: user.email, emailVerified: Boolean(user.emailVerifiedAt) });
-const setAuthCookie = (res, token) => res.setHeader("Set-Cookie", `access_token=${encodeURIComponent(token)}; Max-Age=604800; Path=/; HttpOnly; SameSite=Lax${process.env.NODE_ENV === "production" ? "; Secure" : ""}`);
-const clearAuthCookie = (res) => res.setHeader("Set-Cookie", "access_token=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax");
+const cookieAttributes = process.env.NODE_ENV === "production" ? "SameSite=None; Secure" : "SameSite=Lax";
+const setAuthCookie = (res, token) => res.setHeader("Set-Cookie", `access_token=${encodeURIComponent(token)}; Max-Age=604800; Path=/; HttpOnly; ${cookieAttributes}`);
+const clearAuthCookie = (res) => res.setHeader("Set-Cookie", `access_token=; Max-Age=0; Path=/; HttpOnly; ${cookieAttributes}`);
 let gmailTransporter;
 const getGmailTransporter = () => {
   if (!gmailTransporter) {
