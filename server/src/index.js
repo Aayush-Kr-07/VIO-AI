@@ -11,8 +11,15 @@ const startServer = async () => {
   const app = express();
 
   // ── Middleware (BEFORE routes) ──────────────────────────
-  const allowedOrigins = (process.env.CLIENT_URL || "http://localhost:3000").split(",").map((origin) => origin.trim());
-  app.use(cors({ origin: allowedOrigins, credentials: true }));
+  const allowedOrigins = new Set([
+    "http://localhost:3000",
+    "https://vio-ai-iota.vercel.app",
+    ...(process.env.CLIENT_URL || "").split(",").map((origin) => origin.trim()).filter(Boolean),
+  ]);
+  app.use(cors({
+    origin: (origin, callback) => callback(null, !origin || allowedOrigins.has(origin)),
+    credentials: true,
+  }));
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
   app.use("/api/resume", resumeRoutes);
