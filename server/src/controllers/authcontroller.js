@@ -45,6 +45,11 @@ const deliverSecurityEmail = async (to, subject, url, code) => {
     if (!response.ok) {
       const details = await response.text();
       console.error("Resend delivery failed:", response.status, details);
+      if (response.status === 401 || response.status === 403) {
+        const error = new Error("Email provider rejected the sender. Configure Gmail SMTP or use a verified Resend sending domain.");
+        error.publicMessage = "Email delivery is not configured for this address. Configure a verified sender in the server email settings.";
+        throw error;
+      }
       throw new Error(`Security email delivery failed: ${response.status}`);
     }
     return;
@@ -144,7 +149,7 @@ const requestPasswordReset = async (req, res) => {
     res.json({ sent: true, message: "Check your email. Password reset instructions have been sent." });
   } catch (err) {
     console.error("Password reset email error:", err.message);
-    res.status(503).json({ message: "We could not send the reset email right now. Please try again shortly." });
+    res.status(503).json({ message: err.publicMessage || "We could not send the reset email right now. Please try again shortly." });
   }
 };
 const resetPassword = async (req, res) => {
