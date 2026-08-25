@@ -8,6 +8,7 @@ const MAX_LOGIN_FAILURES = Number(process.env.MAX_LOGIN_FAILURES || 5);
 const LOCKOUT_MINUTES = Number(process.env.LOCKOUT_MINUTES || 15);
 const MAX_ACTIVE_SESSIONS = Number(process.env.MAX_ACTIVE_SESSIONS || 3);
 const TOKEN_TTL_MS = 60 * 60 * 1000;
+const clientUrl = () => process.env.CLIENT_URL?.split(",")[0].trim() || (process.env.NODE_ENV === "production" ? "https://vio-ai-iota.vercel.app" : "http://localhost:3000");
 const hashToken = (value) => crypto.createHash("sha256").update(value).digest("hex");
 const createToken = () => crypto.randomBytes(32).toString("hex");
 const createVerificationCode = () => String(crypto.randomInt(100000, 1000000));
@@ -53,6 +54,11 @@ const deliverSecurityEmail = async (to, subject, url, code) => {
 };
 const sendVerificationEmail = async (user, rawToken) => {
   await deliverSecurityEmail(user.email, "Verify your VioAI email", null, rawToken);
+};
+const requireDatabase = (res) => {
+  if (mongoose.connection.readyState === 1) return true;
+  res.status(503).json({ message: "Database is unavailable. Please try again shortly." });
+  return false;
 };
 
 const createSession = async (user, req, res) => {
@@ -125,14 +131,16 @@ const verifyEmail = async (req, res) => {
 const logout = async (req, res) => { const user = await User.findById(req.userId); const session = user?.sessions.id(req.sessionId); if (session) session.revokedAt = new Date(); if (user) await user.save(); clearAuthCookie(res); res.json({ message: "Logged out" }); };
 const requestPasswordReset = async (req, res) => {
   try {
+    if (!requireDatabase(res)) return;
     const email = String(req.body.email || "").trim().toLowerCase();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return res.status(400).json({ message: "Enter a valid email address" });
     const user = await User.findOne({ email }).select("+passwordResetTokenHash");
     if (!user) return res.status(404).json({ message: "No account was found for this email address." });
     const rawToken = createToken();
     user.passwordResetTokenHash = hashToken(rawToken);
     user.passwordResetExpiresAt = new Date(Date.now() + TOKEN_TTL_MS);
     await user.save();
-    await deliverSecurityEmail(email, "Reset your VioAI password", `${process.env.CLIENT_URL || "http://localhost:3000"}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`);
+    await deliverSecurityEmail(email, "Reset your VioAI password", `${clientUrl()}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`);
     res.json({ sent: true, message: "Check your email. Password reset instructions have been sent." });
   } catch (err) {
     console.error("Password reset email error:", err.message);
@@ -140,7 +148,9 @@ const requestPasswordReset = async (req, res) => {
   }
 };
 const resetPassword = async (req, res) => {
+  if (!requireDatabase(res)) return;
   const { email, token, password, confirmPassword } = req.body;
+  if (!email || !token) return res.status(400).json({ message: "Reset link is invalid or expired." });
   if (password !== confirmPassword) return res.status(400).json({ message: "Passwords do not match" });
   const validationError = passwordError(password); if (validationError) return res.status(400).json({ message: validationError });
   const user = await User.findOne({ email: String(email || "").trim().toLowerCase() }).select("+passwordResetTokenHash");

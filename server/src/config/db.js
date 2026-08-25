@@ -3,12 +3,15 @@ const mongoose = require("mongoose");
 const connectDB = async () => {
   const mongoUrl = process.env.MONGO_URL?.trim();
   if (!mongoUrl) {
+    if (process.env.NODE_ENV === "production") throw new Error("MONGO_URL is required in production.");
     console.warn("MONGO_URL not set; skipping MongoDB connection (development).");
     return false;
   }
 
   if (mongoUrl.includes("<db_password>") || mongoUrl.includes("your_password") || mongoUrl.includes("<password>")) {
-    console.warn("MONGO_URL contains a placeholder password. Please update server/.env with a real MongoDB password.");
+    const error = new Error("MONGO_URL contains a placeholder password.");
+    if (process.env.NODE_ENV === "production") throw error;
+    console.warn(`${error.message} Please update server/.env with a real MongoDB password.`);
     return false;
   }
 
@@ -27,6 +30,7 @@ const connectDB = async () => {
       );
     }
 
+    if (process.env.NODE_ENV === "production") throw err;
     return false;
   }
 };
