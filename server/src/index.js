@@ -37,6 +37,9 @@ const startServer = async () => {
   app.listen(PORT, () => {
     console.log(`Server is running ${PORT}`);
     console.log(`DB connected: ${dbConnected}`);
+    console.log(
+      `Gmail email configured: ${Boolean(process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD)}`,
+    );
   });
 };
 

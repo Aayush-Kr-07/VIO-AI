@@ -79,9 +79,12 @@ const deliverSecurityEmail = async (to, subject, url, code) => {
     });
     return;
   }
-  throw new Error(
+  const error = new Error(
     "GMAIL_USER and GMAIL_APP_PASSWORD are required for security email delivery",
   );
+  error.publicMessage =
+    "Gmail is not configured on the live server. Add GMAIL_USER and GMAIL_APP_PASSWORD in Render.";
+  throw error;
 };
 const sendVerificationEmail = async (user, rawToken) => {
   await deliverSecurityEmail(
@@ -292,8 +295,10 @@ const requestPasswordReset = async (req, res) => {
       .status(503)
       .json({
         message:
-          err.publicMessage ||
-          "We could not send the reset email right now. Please try again shortly.",
+          err.code === "EAUTH"
+            ? "Gmail authentication failed. Use a valid Gmail App Password in Render."
+            : err.publicMessage ||
+              "We could not send the reset email right now. Please try again shortly.",
       });
   }
 };
