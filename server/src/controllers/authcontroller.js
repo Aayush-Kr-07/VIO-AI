@@ -56,7 +56,13 @@ let gmailTransporter;
 const getGmailTransporter = () => {
   if (!gmailTransporter) {
     gmailTransporter = nodemailer.createTransport({
-      service: "gmail",
+      host: "smtp.gmail.com",
+      port: 587,
+      secure: false,
+      requireTLS: true,
+      connectionTimeout: 10000,
+      greetingTimeout: 10000,
+      socketTimeout: 15000,
       auth: {
         user: process.env.GMAIL_USER,
         pass: process.env.GMAIL_APP_PASSWORD,
@@ -297,6 +303,10 @@ const requestPasswordReset = async (req, res) => {
         message:
           err.code === "EAUTH"
             ? "Gmail authentication failed. Use a valid Gmail App Password in Render."
+            : ["ETIMEDOUT", "ECONNECTION", "ESOCKET", "ENETUNREACH"].includes(
+                  err.code,
+                )
+              ? "The live server cannot connect to Gmail SMTP. Please retry after the server redeploys."
             : err.publicMessage ||
               "We could not send the reset email right now. Please try again shortly.",
       });
