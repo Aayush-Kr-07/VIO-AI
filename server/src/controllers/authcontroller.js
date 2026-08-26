@@ -325,7 +325,7 @@ const requestPasswordReset = async (req, res) => {
 const resetPassword = async (req, res) => {
   if (!requireDatabase(res)) return;
   const { email, token, password, confirmPassword } = req.body;
-  if (!email || !token)
+  if (!token)
     return res
       .status(400)
       .json({ message: "Reset link is invalid or expired." });
@@ -335,15 +335,13 @@ const resetPassword = async (req, res) => {
   if (validationError)
     return res.status(400).json({ message: validationError });
   const user = await User.findOne({
-    email: String(email || "")
-      .trim()
-      .toLowerCase(),
+    passwordResetTokenHash: hashToken(String(token)),
   }).select("+passwordResetTokenHash");
   if (
     !user ||
-    user.passwordResetTokenHash !== hashToken(String(token || "")) ||
     !user.passwordResetExpiresAt ||
-    user.passwordResetExpiresAt < new Date()
+    user.passwordResetExpiresAt < new Date() ||
+    (email && user.email !== String(email).trim().toLowerCase())
   )
     return res
       .status(400)
