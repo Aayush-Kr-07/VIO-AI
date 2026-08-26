@@ -2,7 +2,6 @@ const User = require("../user.js");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
-const nodemailer = require("nodemailer");
 
 const MAX_LOGIN_FAILURES = Number(process.env.MAX_LOGIN_FAILURES || 5);
 const LOCKOUT_MINUTES = Number(process.env.LOCKOUT_MINUTES || 15);
@@ -52,45 +51,40 @@ const clearAuthCookie = (res) =>
     "Set-Cookie",
     `access_token=; Max-Age=0; Path=/; HttpOnly; ${cookieAttributes}`,
   );
-let gmailTransporter;
-const getGmailTransporter = () => {
-  if (!gmailTransporter) {
-    gmailTransporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 587,
-      secure: false,
-      requireTLS: true,
-      connectionTimeout: 10000,
-      greetingTimeout: 10000,
-      socketTimeout: 15000,
-      auth: {
-        user: process.env.GMAIL_USER,
-        pass: process.env.GMAIL_APP_PASSWORD,
-      },
-    });
-  }
-  return gmailTransporter;
-};
 const deliverSecurityEmail = async (to, subject, url, code) => {
-  if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
-    const content = code
-      ? `Your VioAI verification code is: ${code}\n\nThis code expires in one hour.`
-      : `Use this secure VioAI link: ${url}\n\nThis link expires in one hour and can only be used once.`;
-    await getGmailTransporter().sendMail({
-      from: `VioAI <${process.env.GMAIL_USER}>`,
+  const webhookUrl = process.env.GMAIL_WEBHOOK_URL?.trim();
+  const webhookSecret = process.env.GMAIL_WEBHOOK_SECRET;
+  if (!webhookUrl || !webhookSecret) {
+    const error = new Error(
+      "GMAIL_WEBHOOK_URL and GMAIL_WEBHOOK_SECRET are required for security email delivery",
+    );
+    error.publicMessage =
+      "Email delivery is not configured on the live server. Add the Gmail webhook settings in Render.";
+    throw error;
+  }
+
+  const text = code
+    ? `Your VioAI verification code is: ${code}\n\nThis code expires in one hour.`
+    : `Use this secure VioAI link: ${url}\n\nThis link expires in one hour and can only be used once.`;
+  const response = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      secret: webhookSecret,
       to,
       subject,
-      text: content,
-      html: `<p>${content.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
-    });
-    return;
+      text,
+      html: `<p>${text.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
+    }),
+    signal: AbortSignal.timeout(15000),
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.sent) {
+    console.error("Gmail webhook delivery failed:", response.status, result.error || "unknown error");
+    const error = new Error(result.error || `Gmail webhook delivery failed: ${response.status}`);
+    error.code = response.status === 401 ? "EAUTH" : "EDELIVERY";
+    throw error;
   }
-  const error = new Error(
-    "GMAIL_USER and GMAIL_APP_PASSWORD are required for security email delivery",
-  );
-  error.publicMessage =
-    "Gmail is not configured on the live server. Add GMAIL_USER and GMAIL_APP_PASSWORD in Render.";
-  throw error;
 };
 const sendVerificationEmail = async (user, rawToken) => {
   await deliverSecurityEmail(
@@ -302,11 +296,11 @@ const requestPasswordReset = async (req, res) => {
       .json({
         message:
           err.code === "EAUTH"
-            ? "Gmail authentication failed. Use a valid Gmail App Password in Render."
+            ? "Gmail webhook authorization failed. Check GMAIL_WEBHOOK_SECRET in Render."
             : ["ETIMEDOUT", "ECONNECTION", "ESOCKET", "ENETUNREACH"].includes(
                   err.code,
                 )
-              ? "The live server cannot connect to Gmail SMTP. Please retry after the server redeploys."
+              ? "The live server could not reach the Gmail webhook. Check GMAIL_WEBHOOK_URL in Render."
             : err.publicMessage ||
               "We could not send the reset email right now. Please try again shortly.",
       });
