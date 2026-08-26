@@ -78,11 +78,26 @@ const deliverSecurityEmail = async (to, subject, url, code) => {
     }),
     signal: AbortSignal.timeout(15000),
   });
-  const result = await response.json().catch(() => ({}));
+  const responseText = await response.text();
+  let result = {};
+  try {
+    result = JSON.parse(responseText);
+  } catch {
+    result.error = `Webhook returned a non-JSON response (${response.status})`;
+  }
   if (!response.ok || !result.sent) {
     console.error("Gmail webhook delivery failed:", response.status, result.error || "unknown error");
     const error = new Error(result.error || `Gmail webhook delivery failed: ${response.status}`);
-    error.code = response.status === 401 ? "EAUTH" : "EDELIVERY";
+    error.code = result.error === "Unauthorized" || response.status === 401
+      ? "EAUTH"
+      : "EDELIVERY";
+    if (error.code === "EAUTH") {
+      error.publicMessage =
+        "Gmail webhook authorization failed. Make sure Render GMAIL_WEBHOOK_SECRET exactly matches Apps Script WEBHOOK_SECRET.";
+    } else if (response.status === 404) {
+      error.publicMessage =
+        "Gmail webhook deployment was not found. Redeploy the Apps Script as a public Web app and update GMAIL_WEBHOOK_URL in Render.";
+    }
     throw error;
   }
 };
@@ -296,7 +311,8 @@ const requestPasswordReset = async (req, res) => {
       .json({
         message:
           err.code === "EAUTH"
-            ? "Gmail webhook authorization failed. Check GMAIL_WEBHOOK_SECRET in Render."
+            ? err.publicMessage ||
+              "Gmail webhook authorization failed. Check GMAIL_WEBHOOK_SECRET in Render."
             : ["ETIMEDOUT", "ECONNECTION", "ESOCKET", "ENETUNREACH"].includes(
                   err.code,
                 )
