@@ -3,11 +3,13 @@ import React, { useContext, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AuthContext } from "@/context/Authcontext";
 import axios from "axios";
 
 const RegisterPage = () => {
   const authContext = useContext(AuthContext);
+  const router = useRouter();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
@@ -42,6 +44,7 @@ const RegisterPage = () => {
 
     try {
       await register(formData.username, formData.email, formData.password);
+      router.push("/dashboard");
     } catch (err: unknown) {
       setError(axios.isAxiosError(err) ? err.response?.data?.message || "Failed to register. Please try again." : "Failed to register. Please try again.");
     }

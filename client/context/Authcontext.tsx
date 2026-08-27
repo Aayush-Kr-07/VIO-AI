@@ -13,7 +13,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isLoggedIn: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<{ email: string }>;
+  register: (name: string, email: string, password: string) => Promise<StoredUser>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 }
@@ -89,14 +89,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           password,
         });
 
-        setTokenState(false);
-        setUser(null);
-        return { email: data.email };
+        setStoredUser(data.user);
+        setTokenState(true);
+        setUser(data.user);
+        return data.user;
       } finally {
         setIsLoading(false);
       }
     },
-    [router],
+    [],
   );
 
   // ── Logout ──────────────────────────────────────────────

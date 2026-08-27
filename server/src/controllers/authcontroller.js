@@ -197,11 +197,13 @@ const register = async (req, res) => {
       ipAddress: ipFor(req),
     });
     await user.save();
+    await createSession(user, req, res);
     res
       .status(201)
       .json({
         message: "Account created successfully.",
         email: normalizedEmail,
+        user: publicUser(user),
       });
   } catch (err) {
     console.error("Register error:", err);
