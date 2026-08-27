@@ -18,6 +18,7 @@ const Navbar = () => {
     ? [
         { href: "/dashboard", label: "Dashboard", icon: "⚡️" },
         { href: "/practice", label: "Practice", icon: "🎯" },
+        { href: "/challenges", label: "Challenges", icon: "🏆" },
         { href: "/history", label: "My Sessions", icon: "📊" },
         { href: "/security", label: "Security", icon: "🔐" },
       ]
