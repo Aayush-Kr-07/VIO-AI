@@ -3,24 +3,17 @@ import React, { useContext, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { AuthContext } from "@/context/Authcontext";
-import axiosInstance from "@/lib/axios";
 import axios from "axios";
 
 const RegisterPage = () => {
   const authContext = useContext(AuthContext);
-  const router = useRouter();
   const [formData, setFormData] = useState({
     username: "",
     email: "",
     password: "",
   });
   const [error, setError] = useState("");
-  const [verificationCode, setVerificationCode] = useState("");
-  const [verificationStep, setVerificationStep] = useState(false);
-  const [registeredEmail, setRegisteredEmail] = useState("");
-  const [resendingCode, setResendingCode] = useState(false);
 
   if (!authContext) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
@@ -48,46 +41,11 @@ const RegisterPage = () => {
     }
 
     try {
-      const result = await register(formData.username, formData.email, formData.password);
-      setRegisteredEmail(result.email);
-      setVerificationStep(true);
+      await register(formData.username, formData.email, formData.password);
     } catch (err: unknown) {
       setError(axios.isAxiosError(err) ? err.response?.data?.message || "Failed to register. Please try again." : "Failed to register. Please try again.");
     }
   };
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    const code = verificationCode.trim();
-    if (!/^\d{6}$/.test(code)) {
-      setError("Enter the 6-digit verification code from your email.");
-      return;
-    }
-    try {
-      await axiosInstance.post("/api/auth/verify-email", { email: registeredEmail, code });
-      router.push("/login?verified=1");
-    } catch (err: unknown) {
-      setError(axios.isAxiosError(err) ? err.response?.data?.message || "Verification failed." : "Verification failed.");
-    }
-  };
-
-  const handleResend = async () => {
-    setError("");
-    setResendingCode(true);
-    try {
-      await axiosInstance.post("/api/auth/resend-verification", { email: registeredEmail });
-      setVerificationCode("");
-    } catch (err: unknown) {
-      setError(axios.isAxiosError(err) ? err.response?.data?.message || "Could not resend the verification code." : "Could not resend the verification code.");
-    } finally {
-      setResendingCode(false);
-    }
-  };
-
-  if (verificationStep) {
-    return <div className="flex min-h-screen items-center justify-center px-4"><div className="w-full max-w-md rounded-2xl border border-gray-100 bg-white p-6 shadow-lg sm:p-8"><h1 className="text-2xl font-bold text-gray-900">Check your email</h1><p className="mt-2 text-sm text-gray-600">We sent a six-digit verification code to {registeredEmail}. Enter it below to finish creating your account. The code expires in one hour.</p><form onSubmit={handleVerify} className="mt-6 space-y-4"><label htmlFor="verification-code" className="block text-sm font-medium text-gray-900">Verification code</label><Input id="verification-code" aria-label="Verification code" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required value={verificationCode} onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, "").slice(0, 6))} placeholder="Enter 6-digit code" /><Button type="submit" className="w-full" disabled={isLoading}>{isLoading ? "Verifying..." : "Verify and continue"}</Button><button type="button" onClick={handleResend} disabled={resendingCode} className="w-full text-sm font-semibold text-blue-700 disabled:opacity-50">{resendingCode ? "Sending new code..." : "Resend verification code"}</button>{error && <p className="text-sm text-red-700">{error}</p>}</form></div></div>;
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-transparent px-3 py-6 sm:px-4">

@@ -185,13 +185,11 @@ const register = async (req, res) => {
       return res.status(400).json({ message: "Enter a valid email address" });
     if (await User.exists({ email: normalizedEmail }))
       return res.status(400).json({ message: "Email already in use" });
-    const rawToken = createVerificationCode();
     const user = new User({
       name: String(name).trim(),
       email: normalizedEmail,
       password,
-      emailVerificationTokenHash: hashToken(rawToken),
-      emailVerificationExpiresAt: new Date(Date.now() + TOKEN_TTL_MS),
+      emailVerifiedAt: new Date(),
     });
     user.activityHistory.push({
       type: "registration",
@@ -199,11 +197,10 @@ const register = async (req, res) => {
       ipAddress: ipFor(req),
     });
     await user.save();
-    await sendVerificationEmail(user, rawToken);
     res
       .status(201)
       .json({
-        message: "Account created. Check your email for the verification code.",
+        message: "Account created successfully.",
         email: normalizedEmail,
       });
   } catch (err) {
