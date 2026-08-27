@@ -1,4 +1,6 @@
 const User = require("../user.js");
+const Interview = require("../models/Interview.js");
+const Readiness = require("../models/Readiness.js");
 const jwt = require("jsonwebtoken");
 const mongoose = require("mongoose");
 const crypto = require("crypto");
@@ -441,6 +443,17 @@ const revokeSession = async (req, res) => {
   if (req.params.sessionId === req.sessionId) clearAuthCookie(res);
   res.json({ message: "Session terminated" });
 };
+const deleteAccount = async (req, res) => {
+  if (!requireDatabase(res)) return;
+  const userId = req.userId;
+  await Promise.all([
+    Interview.deleteMany({ userId }),
+    Readiness.deleteOne({ userId }),
+    User.deleteOne({ _id: userId }),
+  ]);
+  clearAuthCookie(res);
+  res.json({ message: "Account and all associated data deleted." });
+};
 const getMe = async (req, res) => {
   const user = await User.findById(req.userId);
   if (!user) return res.status(404).json({ message: "User not found" });
@@ -458,5 +471,6 @@ module.exports = {
   updatePassword,
   getSecurityData,
   revokeSession,
+  deleteAccount,
   getMe,
 };

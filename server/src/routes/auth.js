@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, verifyEmail, resendVerificationCode, logout, requestPasswordReset, resetPassword, updatePassword, getSecurityData, revokeSession, getMe } = require('../controllers/authcontroller.js');
+const { register, login, verifyEmail, resendVerificationCode, logout, requestPasswordReset, resetPassword, updatePassword, getSecurityData, revokeSession, deleteAccount, getMe } = require('../controllers/authcontroller.js');
 const { protect } = require('../middleware/auth.js');
 const router = express.Router();
 
@@ -15,5 +15,6 @@ router.post('/logout', protect, logout);
 router.post('/password', protect, updatePassword);
 router.get('/security', protect, getSecurityData);
 router.delete('/sessions/:sessionId', protect, revokeSession);
+router.delete('/account', protect, deleteAccount);
 
 module.exports = router;
