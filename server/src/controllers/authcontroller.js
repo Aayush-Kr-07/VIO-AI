@@ -262,7 +262,7 @@ const verifyEmail = async (req, res) => {
   const email = String(req.body.email || req.query.email || "")
     .trim()
     .toLowerCase();
-  const code = String(req.body.code || req.query.code || "");
+  const code = String(req.body.code || req.query.code || "").trim();
   const user = await User.findOne({ email }).select(
     "+emailVerificationTokenHash",
   );
