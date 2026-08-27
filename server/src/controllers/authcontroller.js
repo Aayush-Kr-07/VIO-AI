@@ -21,6 +21,12 @@ const hashToken = (value) =>
   crypto.createHash("sha256").update(value).digest("hex");
 const createToken = () => crypto.randomBytes(32).toString("hex");
 const createVerificationCode = () => String(crypto.randomInt(100000, 1000000));
+const escapeHtml = (value) =>
+  String(value).replace(/[&<>"']/g, (character) =>
+    ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
+      character
+    ],
+  );
 const deviceFor = (req) =>
   (req.get("user-agent") || "Unknown device").slice(0, 240);
 const ipFor = (req) => req.ip || req.socket.remoteAddress || "unknown";
@@ -71,6 +77,9 @@ const deliverSecurityEmail = async (to, subject, url, code) => {
   const text = code
     ? `Your VioAI verification code is: ${code}\n\nThis code expires in one hour.`
     : `Use this secure VioAI link: ${url}\n\nThis link expires in one hour and can only be used once.`;
+  const html = code
+    ? `<p>Your VioAI verification code is: <strong>${escapeHtml(code)}</strong></p><p>This code expires in one hour.</p>`
+    : `<p>Use this secure VioAI link:</p><p><a href="${escapeHtml(url)}">Reset your VioAI password</a></p><p>This link expires in one hour and can only be used once.</p>`;
   const response = await fetch(webhookUrl, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -79,7 +88,7 @@ const deliverSecurityEmail = async (to, subject, url, code) => {
       to,
       subject,
       text,
-      html: `<p>${text.replace(/\n\n/g, "</p><p>").replace(/\n/g, "<br>")}</p>`,
+      html,
     }),
     signal: AbortSignal.timeout(15000),
   });
