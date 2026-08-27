@@ -12,6 +12,11 @@ const clientUrl = () =>
   (process.env.NODE_ENV === "production"
     ? "https://vio-ai-iota.vercel.app"
     : "http://localhost:3000");
+const passwordResetUrl = (token) => {
+  const url = new URL("/reset-password", clientUrl());
+  url.searchParams.set("token", token);
+  return url.toString();
+};
 const hashToken = (value) =>
   crypto.createHash("sha256").update(value).digest("hex");
 const createToken = () => crypto.randomBytes(32).toString("hex");
@@ -298,7 +303,7 @@ const requestPasswordReset = async (req, res) => {
     await deliverSecurityEmail(
       email,
       "Reset your VioAI password",
-      `${clientUrl()}/reset-password?token=${rawToken}&email=${encodeURIComponent(email)}`,
+      passwordResetUrl(rawToken),
     );
     res.json({
       sent: true,
@@ -324,8 +329,9 @@ const requestPasswordReset = async (req, res) => {
 };
 const resetPassword = async (req, res) => {
   if (!requireDatabase(res)) return;
-  const { email, token, password, confirmPassword } = req.body;
-  if (!token)
+  const { token, password, confirmPassword } = req.body;
+  const normalizedToken = String(token || "").trim();
+  if (!normalizedToken)
     return res
       .status(400)
       .json({ message: "Reset link is invalid or expired." });
@@ -335,13 +341,12 @@ const resetPassword = async (req, res) => {
   if (validationError)
     return res.status(400).json({ message: validationError });
   const user = await User.findOne({
-    passwordResetTokenHash: hashToken(String(token)),
+    passwordResetTokenHash: hashToken(normalizedToken),
   }).select("+passwordResetTokenHash");
   if (
     !user ||
     !user.passwordResetExpiresAt ||
-    user.passwordResetExpiresAt < new Date() ||
-    (email && user.email !== String(email).trim().toLowerCase())
+    user.passwordResetExpiresAt < new Date()
   )
     return res
       .status(400)
