@@ -1,5 +1,5 @@
 const express = require('express');
-const { register, login, verifyEmail, logout, requestPasswordReset, resetPassword, updatePassword, getSecurityData, revokeSession, getMe } = require('../controllers/authcontroller.js');
+const { register, login, verifyEmail, resendVerificationCode, logout, requestPasswordReset, resetPassword, updatePassword, getSecurityData, revokeSession, getMe } = require('../controllers/authcontroller.js');
 const { protect } = require('../middleware/auth.js');
 const router = express.Router();
 
@@ -7,6 +7,7 @@ router.post('/register', register);
 router.post('/login', login);
 router.get('/verify-email', verifyEmail);
 router.post('/verify-email', verifyEmail);
+router.post('/resend-verification', resendVerificationCode);
 router.post('/forgot-password', requestPasswordReset);
 router.post('/reset-password', resetPassword);
 router.get('/me', protect, getMe);

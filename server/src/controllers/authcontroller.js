@@ -21,6 +21,8 @@ const hashToken = (value) =>
   crypto.createHash("sha256").update(value).digest("hex");
 const createToken = () => crypto.randomBytes(32).toString("hex");
 const createVerificationCode = () => String(crypto.randomInt(100000, 1000000));
+const normalizeVerificationCode = (value) =>
+  String(value || "").replace(/\D/g, "");
 const escapeHtml = (value) =>
   String(value).replace(/[&<>"']/g, (character) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[
@@ -262,7 +264,9 @@ const verifyEmail = async (req, res) => {
   const email = String(req.body.email || req.query.email || "")
     .trim()
     .toLowerCase();
-  const code = String(req.body.code || req.query.code || "").trim();
+  const code = normalizeVerificationCode(
+    req.body.code || req.body.verificationCode || req.query.code,
+  );
   const user = await User.findOne({ email }).select(
     "+emailVerificationTokenHash",
   );
@@ -280,6 +284,29 @@ const verifyEmail = async (req, res) => {
   user.emailVerificationExpiresAt = null;
   await user.save();
   res.json({ message: "Email verified. You can now sign in." });
+};
+
+const resendVerificationCode = async (req, res) => {
+  try {
+    if (!requireDatabase(res)) return;
+    const email = String(req.body.email || "")
+      .trim()
+      .toLowerCase();
+    const user = await User.findOne({ email }).select(
+      "+emailVerificationTokenHash",
+    );
+    if (!user || user.emailVerifiedAt)
+      return res.status(400).json({ message: "Unable to resend verification code." });
+    const code = createVerificationCode();
+    user.emailVerificationTokenHash = hashToken(code);
+    user.emailVerificationExpiresAt = new Date(Date.now() + TOKEN_TTL_MS);
+    await user.save();
+    await sendVerificationEmail(user, code);
+    res.json({ message: "A new verification code has been sent." });
+  } catch (err) {
+    console.error("Verification email resend error:", err);
+    res.status(503).json({ message: "We could not send a new verification code right now." });
+  }
 };
 
 const logout = async (req, res) => {
@@ -424,6 +451,7 @@ module.exports = {
   register,
   login,
   verifyEmail,
+  resendVerificationCode,
   logout,
   requestPasswordReset,
   resetPassword,
