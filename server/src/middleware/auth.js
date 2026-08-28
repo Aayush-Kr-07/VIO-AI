@@ -29,6 +29,7 @@ const protect = async (req, res, next) => {
     await user.save();
     req.userId = decoded.userId;
     req.sessionId = session._id.toString();
+    req.user = user;
     next();
   } catch (err) {
     res.status(401).json({ message: 'Invalid or expired token' });

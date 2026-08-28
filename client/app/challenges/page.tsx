@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useState } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import axiosInstance from "@/lib/axios";
 import axios from "axios";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
 const categories = ["All", "HR", "Technical", "Aptitude", "Domain-Specific"];
 type Challenge = { _id: string; title: string; category: string; prompt: string; difficulty: string; generatedBy: string; attempt: { score: number; points: number; feedback: string } | null };
@@ -14,6 +15,7 @@ const categoryTone: Record<string, string> = { HR: "bg-rose-50 text-rose-700 bor
 
 export default function ChallengesPage() {
   const { isLoggedIn, isLoading } = useAuth();
+  const { isAllowed } = useRoleGuard(["student"]);
   const [challenges, setChallenges] = useState<Challenge[]>([]);
   const [stats, setStats] = useState<Stats | null>(null);
   const [leaders, setLeaders] = useState<Leader[]>([]);
@@ -46,7 +48,7 @@ export default function ChallengesPage() {
     finally { setSubmitting(false); }
   };
 
-  if (isLoading || !isLoggedIn) return <main className="mx-auto max-w-6xl px-4 py-14"><p className="text-slate-600">Sign in to enter the Challenge Arena.</p></main>;
+  if (isLoading || !isLoggedIn || !isAllowed) return null;
   const visible = selectedCategory === "All" ? challenges : challenges.filter((challenge) => challenge.category === selectedCategory);
   const activeChallenge = challenges.find((challenge) => challenge._id === activeId);
 

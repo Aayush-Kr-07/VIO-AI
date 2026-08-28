@@ -1,3 +1,5 @@
+import type { Role } from '@/lib/rbac';
+
 const TOKEN_KEY = 'token';
 const USER_KEY = 'user';
 
@@ -5,6 +7,7 @@ export interface StoredUser {
     id: string;
     name: string;
     email: string;
+    role: Role;
 }
 
 // ── Token ─────────────────────────────────────────────────

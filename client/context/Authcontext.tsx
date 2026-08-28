@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import axiosInstance from "@/lib/axios";
 import { clearAuth, setStoredUser, StoredUser } from "@/lib/auth";
 import axios from "axios";
+import { isRole, roleHome } from "@/lib/rbac";
 
 // ── Types ─────────────────────────────────────────────────
 interface AuthContextValue {
@@ -70,7 +71,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setTokenState(true);
         setUser(data.user);
 
-        router.push("/dashboard");
+        const role = data.user.role as string;
+        router.push(isRole(role) ? roleHome[role] : "/dashboard");
       } finally {
         setIsLoading(false);
       }

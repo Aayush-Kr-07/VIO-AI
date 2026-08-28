@@ -6,6 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import axiosInstance from "@/lib/axios";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
 interface Interview {
   id: string;
@@ -467,6 +468,7 @@ function ResumePanel({
 const page = () => {
   const router = useRouter();
   const { isLoggedIn, isLoading: authLoading, user } = useAuth();
+  const { isAllowed } = useRoleGuard(["student"]);
   const [interviews, setIntervies] = useState<Interview[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
   const [ShowDomainSelector, setShowDomainSelector] = useState(false);
@@ -575,7 +577,7 @@ const page = () => {
       </div>
     );
   }
-  if (!isLoggedIn) return null;
+  if (!isLoggedIn || !isAllowed) return null;
 
   const avgScore = interviews.length
     ? Math.round(

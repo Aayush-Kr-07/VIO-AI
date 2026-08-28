@@ -1,5 +1,7 @@
 const express = require("express");
 const { protect } = require("../middleware/auth.js");
+const { authorize } = require("../middleware/rbac.js");
+const { PERMISSIONS } = require("../config/rbac.js");
 const multer = require("multer");
 const { analyzeResume } = require("../controllers/resumecontroller.js");
 const router = express.Router();
@@ -22,6 +24,6 @@ const upload = multer({
   },
 });
 
-router.post("/analyze", protect, upload.single("resume"), analyzeResume);
+router.post("/analyze", protect, authorize(PERMISSIONS.VIEW_OWN_PERFORMANCE), upload.single("resume"), analyzeResume);
 
 module.exports = router;

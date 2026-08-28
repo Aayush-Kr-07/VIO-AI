@@ -50,8 +50,11 @@ const publicUser = (user) => ({
   id: user._id,
   name: user.name,
   email: user.email,
+  role: user.role || "student",
   emailVerified: Boolean(user.emailVerifiedAt),
 });
+const configuredAdministratorEmails = () =>
+  new Set((process.env.ADMIN_EMAILS || "").split(",").map((email) => email.trim().toLowerCase()).filter(Boolean));
 const cookieAttributes =
   process.env.NODE_ENV === "production"
     ? "SameSite=None; Secure"
@@ -248,6 +251,9 @@ const login = async (req, res) => {
       user.activityHistory = user.activityHistory.slice(-100);
       await user.save();
       return res.status(401).json({ message: "Invalid credentials" });
+    }
+    if (configuredAdministratorEmails().has(email) && user.role !== "administrator") {
+      user.role = "administrator";
     }
     user.failedLoginAttempts = 0;
     user.lockedUntil = null;
@@ -456,6 +462,10 @@ const deleteAccount = async (req, res) => {
 const getMe = async (req, res) => {
   const user = await User.findById(req.userId);
   if (!user) return res.status(404).json({ message: "User not found" });
+  if (configuredAdministratorEmails().has(user.email) && user.role !== "administrator") {
+    user.role = "administrator";
+    await user.save();
+  }
   res.status(200).json({ user: publicUser(user) });
 };
 

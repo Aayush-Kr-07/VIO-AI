@@ -3,6 +3,7 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useAuth } from "@/hooks/useAuth";
+import { isRole, roleLabel } from "@/lib/rbac";
 
 const Navbar = () => {
   const pathname = usePathname();
@@ -14,14 +15,17 @@ const Navbar = () => {
   }, [pathname]);
 
   const isActive = (path: string) => pathname === path;
-  const navLinks = isLoggedIn
-    ? [
-        { href: "/dashboard", label: "Dashboard", icon: "⚡️" },
-        { href: "/practice", label: "Practice", icon: "🎯" },
-        { href: "/challenges", label: "Challenges", icon: "🏆" },
-        { href: "/history", label: "My Sessions", icon: "📊" },
-        { href: "/security", label: "Security", icon: "🔐" },
-      ]
+  const navLinks = isLoggedIn && user
+    ? user.role === "student"
+      ? [
+          { href: "/dashboard", label: "Dashboard", icon: "⚡️" },
+          { href: "/practice", label: "Practice", icon: "🎯" },
+          { href: "/challenges", label: "Challenges", icon: "🏆" },
+          { href: "/security", label: "Security", icon: "🔐" },
+        ]
+      : user.role === "mentor"
+        ? [{ href: "/mentor", label: "Mentor Dashboard", icon: "📈" }, { href: "/security", label: "Security", icon: "🔐" }]
+        : [{ href: "/admin", label: "Admin Dashboard", icon: "⚙️" }, { href: "/security", label: "Security", icon: "🔐" }]
     : [
         { href: "/#features", label: "Features", icon: "✨" },
         { href: "/#how-it-works", label: "How It Works", icon: "🧐" },
@@ -62,6 +66,7 @@ const Navbar = () => {
                   {initial}
                 </span>
                 <span className="text-sm font-medium text-blue-950">{firstName}</span>
+                <span className="text-xs text-blue-600">{isRole(user.role) ? roleLabel[user.role] : "User"}</span>
               </div>
               <button
                 type="button"

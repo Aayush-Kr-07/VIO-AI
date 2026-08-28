@@ -7,6 +7,7 @@ import { InputBox } from "@/components/InputBox";
 import { useAuth } from "@/hooks/useAuth";
 import axiosInstance from "@/lib/axios";
 import { COMPANY_PROFILES } from "@/lib/companyProfiles";
+import { useRoleGuard } from "@/hooks/useRoleGuard";
 
 interface Message {
   id: string;
@@ -48,6 +49,7 @@ function getRequestErrorMessage(error: unknown, fallback: string) {
 export default function InterviewPage() {
   const router = useRouter();
   const { isLoggedIn, isLoading: authLoading } = useAuth();
+  const { isAllowed } = useRoleGuard(["student"]);
   const [domain, setDomain] = useState(() => {
     if (typeof window === "undefined") return "General";
     return new URLSearchParams(window.location.search).get("domain")?.trim() || "General";
@@ -194,7 +196,7 @@ export default function InterviewPage() {
     return () => window.clearInterval(timer);
   }, [finishSession, sessionId, isComplete, isFinishing]);
 
-  if (authLoading || !isLoggedIn) return null;
+  if (authLoading || !isLoggedIn || !isAllowed) return null;
 
   const selectedCompany = COMPANY_PROFILES.find((company) => company.id === companyId);
   if (!companyId) {

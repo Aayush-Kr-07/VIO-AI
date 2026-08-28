@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, lowercase: true, unique: true },
   password: { type: String, required: true, select: false },
+  role: { type: String, enum: ["student", "mentor", "administrator"], default: "student", required: true },
   emailVerifiedAt: { type: Date, default: null },
   emailVerificationTokenHash: { type: String, select: false, default: null },
   emailVerificationExpiresAt: { type: Date, select: false, default: null },
