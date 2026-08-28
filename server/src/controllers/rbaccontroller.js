@@ -51,7 +51,7 @@ const deleteUser = async (req, res) => {
 const getMentorReports = async (req, res) => {
   const studentIds = await User.find({ role: "student" }).select("_id").lean();
   const reports = await Interview.find({ isComplete: true, userId: { $in: studentIds.map((student) => student._id) } })
-    .select("userId domain companyName score duration feedback improvementSuggestions strengths weakAreas createdAt")
+    .select("userId domain companyName score duration feedback improvementSuggestions strengths weakAreas mentorFeedback createdAt")
     .sort({ createdAt: -1 })
     .limit(100)
     .lean();
@@ -60,4 +60,35 @@ const getMentorReports = async (req, res) => {
   res.json({ reports: reports.map((report) => ({ ...report, id: report._id, _id: undefined, student: studentMap.get(String(report.userId)) || null, userId: undefined })) });
 };
 
-module.exports = { listUsers, updateUserRole, updateUserStatus, deleteUser, getMentorReports };
+const getMentorPerformance = async (req, res) => {
+  const studentIds = await User.find({ role: "student" }).select("_id name email").lean();
+  const reports = await Interview.find({ isComplete: true, userId: { $in: studentIds.map((student) => student._id) } })
+    .select("userId score domain createdAt")
+    .sort({ createdAt: -1 })
+    .lean();
+  const students = new Map(studentIds.map((student) => [String(student._id), student]));
+  const performance = new Map();
+  for (const report of reports) {
+    const key = String(report.userId);
+    const current = performance.get(key) || { student: students.get(key), interviews: 0, totalScore: 0, latestScore: report.score, domains: [] };
+    current.interviews += 1;
+    current.totalScore += report.score || 0;
+    if (!current.domains.includes(report.domain)) current.domains.push(report.domain);
+    performance.set(key, current);
+  }
+  res.json({ students: [...performance.values()].map((item) => ({ ...item, averageScore: Math.round(item.totalScore / item.interviews), totalScore: undefined })) });
+};
+
+const giveMentorFeedback = async (req, res) => {
+  const feedback = String(req.body.feedback || "").trim();
+  const advice = String(req.body.advice || "").trim();
+  if (!feedback || !advice) return res.status(400).json({ message: "Feedback and advice are required" });
+  const studentIds = await User.find({ role: "student" }).distinct("_id");
+  const report = await Interview.findOne({ _id: req.params.reportId, isComplete: true, userId: { $in: studentIds } });
+  if (!report) return res.status(404).json({ message: "Student report not found" });
+  report.mentorFeedback.push({ mentorId: req.userId, feedback, advice });
+  await report.save();
+  res.status(201).json({ feedback: report.mentorFeedback[report.mentorFeedback.length - 1] });
+};
+
+module.exports = { listUsers, updateUserRole, updateUserStatus, deleteUser, getMentorReports, getMentorPerformance, giveMentorFeedback };

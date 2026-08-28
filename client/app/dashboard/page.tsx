@@ -21,6 +21,7 @@ interface InterviewDetails extends Interview {
   improvementSuggestions: string;
   answerScores: number[];
   questionsAnswered: number;
+  mentorFeedback: { feedback: string; advice: string; createdAt: string }[];
 }
 
 interface ResumeAnalysis {
@@ -547,6 +548,7 @@ const page = () => {
           interview.improvementSuggestions || "Keep practising with specific examples.",
         answerScores: interview.answerScores || [],
         questionsAnswered: interview.questionsAnswered || 0,
+        mentorFeedback: interview.mentorFeedback || [],
       });
     } catch (error) {
       console.error("Failed to fetch interview details:", error);
@@ -973,6 +975,20 @@ const page = () => {
                         <p className="mb-1 text-sm font-bold text-foreground">Evaluator notes</p>
                         <p className="whitespace-pre-line text-sm leading-6 text-muted-foreground">{selectedInterview.feedback}</p>
                       </div>
+                      {selectedInterview.mentorFeedback.length ? (
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/70 p-4">
+                          <p className="mb-3 text-sm font-bold text-emerald-950">Mentor review</p>
+                          <div className="space-y-3">
+                            {selectedInterview.mentorFeedback.map((item, index) => (
+                              <div key={`${selectedInterview.id}-mentor-${index}`}>
+                                <p className="text-sm leading-6 text-emerald-950">{item.feedback}</p>
+                                <p className="mt-2 text-sm leading-6 text-emerald-900"><strong>Advice:</strong> {item.advice}</p>
+                                <p className="mt-2 text-xs text-emerald-700">{new Date(item.createdAt).toLocaleDateString()}</p>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : null}
                     </div>
                   </Card>
                 </div>

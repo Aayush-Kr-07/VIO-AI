@@ -6,6 +6,13 @@ const MessageSchema = new mongoose.Schema({
     timestamp: {type: Date, default: Date.now}
 })
 
+const mentorFeedbackSchema = new mongoose.Schema({
+    mentorId: {type: mongoose.Schema.Types.ObjectId, ref: 'user', required: true},
+    feedback: {type: String, required: true, trim: true, maxlength: 2000},
+    advice: {type: String, required: true, trim: true, maxlength: 2000},
+    createdAt: {type: Date, default: Date.now},
+})
+
 const interviewSchema = new mongoose.Schema({
     userId: {type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true},
     domain: {type: String,required: true},
@@ -25,6 +32,7 @@ const interviewSchema = new mongoose.Schema({
     meetsStandard: {type: Boolean, default: false},
     answerScores: {type: [Number], default: []},
     isComplete: {type: Boolean, default: false},
+    mentorFeedback: {type: [mentorFeedbackSchema], default: []},
     createdAt: {type: Date, default: Date.now},
 })
 

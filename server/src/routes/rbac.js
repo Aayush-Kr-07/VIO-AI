@@ -2,11 +2,13 @@ const express = require("express");
 const { protect } = require("../middleware/auth.js");
 const { authorize } = require("../middleware/rbac.js");
 const { PERMISSIONS } = require("../config/rbac.js");
-const { listUsers, updateUserRole, updateUserStatus, deleteUser, getMentorReports } = require("../controllers/rbaccontroller.js");
+const { listUsers, updateUserRole, updateUserStatus, deleteUser, getMentorReports, getMentorPerformance, giveMentorFeedback } = require("../controllers/rbaccontroller.js");
 
 const router = express.Router();
 router.use(protect);
 router.get("/mentor/reports", authorize(PERMISSIONS.REVIEW_REPORTS), getMentorReports);
+router.get("/mentor/performance", authorize(PERMISSIONS.VIEW_STUDENT_PERFORMANCE), getMentorPerformance);
+router.post("/mentor/reports/:reportId/feedback", authorize(PERMISSIONS.PROVIDE_FEEDBACK), giveMentorFeedback);
 router.get("/users", authorize(PERMISSIONS.MANAGE_USERS), listUsers);
 router.patch("/users/:userId/role", authorize(PERMISSIONS.MANAGE_ROLES), updateUserRole);
 router.patch("/users/:userId/status", authorize(PERMISSIONS.MANAGE_USERS), updateUserStatus);
