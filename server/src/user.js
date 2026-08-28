@@ -30,6 +30,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, lowercase: true, unique: true },
   password: { type: String, required: true, select: false },
   role: { type: String, enum: ["student", "mentor", "administrator"], default: "student", required: true },
+  status: { type: String, enum: ["active", "suspended"], default: "active", required: true },
   emailVerifiedAt: { type: Date, default: null },
   emailVerificationTokenHash: { type: String, select: false, default: null },
   emailVerificationExpiresAt: { type: Date, select: false, default: null },

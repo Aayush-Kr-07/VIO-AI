@@ -51,6 +51,7 @@ const publicUser = (user) => ({
   name: user.name,
   email: user.email,
   role: user.role || "student",
+  status: user.status || "active",
   emailVerified: Boolean(user.emailVerifiedAt),
 });
 const configuredAdministratorEmails = () =>
@@ -228,6 +229,7 @@ const login = async (req, res) => {
         .json({ message: "Email and password are required" });
     const user = await User.findOne({ email }).select("+password");
     if (!user) return res.status(401).json({ message: "Invalid credentials" });
+    if (user.status === "suspended") return res.status(403).json({ message: "This account has been suspended. Contact an administrator." });
     if (user.lockedUntil && user.lockedUntil > new Date())
       return res
         .status(423)

@@ -22,7 +22,7 @@ const protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your_jwt_secret_key');
     const user = await User.findById(decoded.userId).select('+password +emailVerificationTokenHash +passwordResetTokenHash');
     const session = user?.sessions.find((candidate) => candidate.sessionHash === crypto.createHash('sha256').update(decoded.sessionId).digest('hex'));
-    if (!user || !session || session.revokedAt || session.lastActiveAt < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) {
+    if (!user || user.status === 'suspended' || !session || session.revokedAt || session.lastActiveAt < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) {
       return res.status(401).json({ message: 'Session expired or revoked' });
     }
     session.lastActiveAt = new Date();
