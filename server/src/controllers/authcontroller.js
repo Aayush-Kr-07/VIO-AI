@@ -277,7 +277,7 @@ const verifyEmail = async (req, res) => {
     req.body.code || req.body.verificationCode || req.query.code,
   );
   const user = await User.findOne({ email }).select(
-    "+emailVerificationTokenHash",
+    "+emailVerificationTokenHash +emailVerificationExpiresAt",
   );
   if (
     !user ||
@@ -302,7 +302,7 @@ const resendVerificationCode = async (req, res) => {
       .trim()
       .toLowerCase();
     const user = await User.findOne({ email }).select(
-      "+emailVerificationTokenHash",
+      "+emailVerificationTokenHash +emailVerificationExpiresAt",
     );
     if (!user || user.emailVerifiedAt)
       return res.status(400).json({ message: "Unable to resend verification code." });
@@ -335,7 +335,7 @@ const requestPasswordReset = async (req, res) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email))
       return res.status(400).json({ message: "Enter a valid email address" });
     const user = await User.findOne({ email }).select(
-      "+passwordResetTokenHash",
+      "+passwordResetTokenHash +passwordResetExpiresAt",
     );
     if (!user)
       return res
@@ -387,7 +387,7 @@ const resetPassword = async (req, res) => {
     return res.status(400).json({ message: validationError });
   const user = await User.findOne({
     passwordResetTokenHash: hashToken(normalizedToken),
-  }).select("+passwordResetTokenHash");
+  }).select("+passwordResetTokenHash +passwordResetExpiresAt");
   if (
     !user ||
     !user.passwordResetExpiresAt ||
